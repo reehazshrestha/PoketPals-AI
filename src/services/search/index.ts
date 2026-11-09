@@ -5,6 +5,7 @@ import {BraveProvider} from './providers/brave';
 import {ExaProvider} from './providers/exa';
 import {FirecrawlProvider} from './providers/firecrawl';
 import {ParallelProvider} from './providers/parallel';
+import {DuckDuckGoProvider} from './providers/duckduckgo';
 import {YouProvider} from './providers/you';
 
 export type {
@@ -41,6 +42,8 @@ export const createSearchProvider = (
       return new ParallelProvider(getKey);
     case 'you':
       return new YouProvider(getKey);
+    case 'duckduckgo':
+      return new DuckDuckGoProvider(getKey);
   }
 };
 

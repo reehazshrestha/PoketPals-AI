@@ -9,6 +9,7 @@ import {
   type AvailableLanguage,
 } from '../locales';
 import {ErrorState} from '../utils/errors';
+import type {AccentPaletteId} from '../theme/tokens';
 import {
   INITIAL_ONBOARDING_STATE,
   type OnboardingState,
@@ -38,6 +39,11 @@ export class UIStore {
   colorScheme: 'light' | 'dark' =
     Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
 
+  // Accent palette for the design-system primary color. Persisted; existing
+  // installs hydrate as `graphite` (no overrides, identical to pre-palette
+  // rendering).
+  accentPalette: AccentPaletteId = 'graphite';
+
   // Current selected language (default to English)
   _language: AvailableLanguage = 'en';
 
@@ -47,6 +53,19 @@ export class UIStore {
   }
 
   displayMemUsage = false;
+
+  /**
+   * Low Latency Mode preference. Persisted as a label/memento of the
+   * Qwen2.5 0.5B + Piper setup; model and voice selection stay independent
+   * so the user can switch either one afterwards without clearing the flag.
+   */
+  lowLatencyMode = false;
+
+  setLowLatencyMode(enabled: boolean) {
+    runInAction(() => {
+      this.lowLatencyMode = enabled;
+    });
+  }
 
   iOSBackgroundDownloading = true;
 
@@ -115,8 +134,10 @@ export class UIStore {
       properties: [
         'pageStates',
         'colorScheme',
+        'accentPalette',
         'autoNavigatetoChat',
         'displayMemUsage',
+        'lowLatencyMode',
         'benchmarkShareDialog',
         '_language',
         'toolCompatWarnedModels',
@@ -147,6 +168,12 @@ export class UIStore {
   setColorScheme(colorScheme: 'light' | 'dark') {
     runInAction(() => {
       this.colorScheme = colorScheme;
+    });
+  }
+
+  setAccentPalette(palette: AccentPaletteId) {
+    runInAction(() => {
+      this.accentPalette = palette;
     });
   }
 

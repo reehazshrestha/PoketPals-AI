@@ -108,13 +108,12 @@ export interface OnboardingPalDef {
   greeting?: OnboardingPalGreeting;
 }
 
-const PAL_PIP: OnboardingPalDef = {
+const PAL_KIM: OnboardingPalDef = {
   key: 'pip',
-  name: 'Pip',
-  description:
-    'A friendly general-purpose pal that runs entirely on your phone.',
+  name: 'Kim',
+  description: 'A sharp, practical assistant that runs entirely on your phone.',
   systemPrompt:
-    "You are Pip, a friendly and helpful assistant who runs locally on the user's phone. Keep replies concise and warm.",
+    "You are Kim, a sharp, practical assistant that runs entirely on the user's phone. Answer in the user's language and lead with the answer. Keep replies short and scannable: 1-3 short paragraphs, or a short list when steps are involved. Be warm and direct, cut filler and emoji, and say plainly when you are unsure. For concrete requests, give the exact steps or code instead of a general explanation.",
   color: ['#0E0D0C', '#FAFAFA'],
   models: [
     palEntry({
@@ -347,7 +346,7 @@ const PAL_MUSE: OnboardingPalDef = {
 };
 
 export const ONBOARDING_PALS: readonly OnboardingPalDef[] = [
-  PAL_PIP,
+  PAL_KIM,
   PAL_CODIE,
   PAL_SAGE,
   PAL_ECHO,
@@ -355,12 +354,12 @@ export const ONBOARDING_PALS: readonly OnboardingPalDef[] = [
 ];
 
 export const TOPIC_TO_PAL: Record<TopicKey, OnboardingPalDef> = {
-  smartchat: PAL_PIP,
+  smartchat: PAL_KIM,
   coding: PAL_CODIE,
   education: PAL_SAGE,
   roleplay: PAL_ECHO,
   creative_writing: PAL_MUSE,
-  else: PAL_PIP,
+  else: PAL_KIM,
 };
 
 export const resolvePalForTopic = (topic: TopicKey | null): OnboardingPalDef =>

@@ -832,10 +832,6 @@ export const useChatSession = (
     currentMessageInfo.current = messageInfo;
     opts.onTurnCreated?.(messageInfo.id);
 
-    // Allowed talent names for this Pal. The runner rejects any
-    // tool call whose function.name isn't in this list.
-    const palTalents = (pal?.pact?.talents ?? []).map(t => t.name);
-
     const completionStartTime = Date.now();
     const timeToFirstTokenMs: {value: number | null} = {value: null};
     let uiState: AgentUiState = initialAgentUiState;
@@ -850,6 +846,33 @@ export const useChatSession = (
     // later) instead of `marker_seen`.
     const tools =
       (cleanCompletionParams.tools as ToolDefinition[] | undefined) ?? [];
+    // Check whether the model's jinja template actually supports tool use.
+    // If it doesn't, we must NOT inject tool schemas — the model will simply
+    // produce a native answer, and claiming 'I've searched the web' would be
+    // a fabrication.
+    const ctx = modelStore.context;
+    const modelSupportsTools =
+      !!ctx?.model?.chatTemplates?.jinja?.defaultCaps?.tools ||
+      !!ctx?.model?.chatTemplates?.jinja?.defaultCaps?.toolCalls ||
+      !!ctx?.model?.chatTemplates?.jinja?.toolUse ||
+      !!ctx?.model?.chatTemplates?.jinja?.toolUseCaps;
+    // When the model can't use tools, clear tools so downstream code doesn't
+    // attempt talent calls it can't handle; the model answers natively.
+    if (!modelSupportsTools) {
+      cleanCompletionParams.tools = undefined;
+    }
+    // When the model supports tools, take the union of Pal-declared talents
+    // and the schemas attached to this turn. A stock chat on a tool-supporting
+    // model still gets its built-in talents; a stock chat on a non-tool model
+    // gets nothing (no fabricated 'searched the web' claim).
+    const allowedTalentNames = modelSupportsTools
+      ? Array.from(
+          new Set([
+            ...(pal?.pact?.talents ?? []).map(t => t.name),
+            ...tools.map(tool => tool.function?.name ?? ''),
+          ]),
+        ).filter(Boolean)
+      : [];
     const tts: TtsRunState = {
       enabled: ttsStore.streamsReplies,
       started: false,
@@ -890,7 +913,7 @@ export const useChatSession = (
       const events = runAgent({
         engine,
         initialParams: cleanCompletionParams as ApiCompletionParams,
-        allowedTalentNames: palTalents,
+        allowedTalentNames,
         talentLookup: name => talentRegistry.get(name),
         triggerMarkers,
         messageId: messageInfo.id,

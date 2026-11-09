@@ -28,7 +28,7 @@ const renderView = () =>
   );
 
 const getEngineGroupCount = (query: (id: string) => unknown): number =>
-  ['kitten', 'kokoro', 'supertonic', 'phonon'].filter(
+  ['kitten', 'kokoro', 'supertonic', 'phonon', 'piper'].filter(
     id => query(`tts-engine-group-${id}`) != null,
   ).length;
 
@@ -41,6 +41,7 @@ describe('VoicePickerView', () => {
       ttsStore.kokoroDownloadState = 'not_installed';
       ttsStore.supertonicDownloadState = 'not_installed';
       ttsStore.phononDownloadState = 'not_installed';
+      ttsStore.piperDownloadState = 'not_installed';
       ttsStore.phononSupported = false;
     });
   });
@@ -50,6 +51,7 @@ describe('VoicePickerView', () => {
     expect(getByTestId('tts-engine-group-kitten')).toBeTruthy();
     expect(getByTestId('tts-engine-group-kokoro')).toBeTruthy();
     expect(getByTestId('tts-engine-group-supertonic')).toBeTruthy();
+    expect(getByTestId('tts-engine-group-piper')).toBeTruthy();
     expect(queryByTestId('tts-engine-group-system')).toBeNull();
   });
 
@@ -104,6 +106,7 @@ describe('VoicePickerView', () => {
       );
       expect(groups).toEqual([
         'tts-engine-group-phonon',
+        'tts-engine-group-piper',
         'tts-engine-group-kitten',
         'tts-engine-group-kokoro',
         'tts-engine-group-supertonic',
@@ -121,6 +124,7 @@ describe('VoicePickerView', () => {
       expect(
         getAllByTestId(/^tts-engine-group-(?!toggle)/).map(g => g.props.testID),
       ).toEqual([
+        'tts-engine-group-piper',
         'tts-engine-group-kitten',
         'tts-engine-group-kokoro',
         'tts-engine-group-supertonic',
@@ -129,7 +133,7 @@ describe('VoicePickerView', () => {
       expect(queryByTestId('tts-engine-group-phonon')).toBeNull();
       expect(queryByTestId('tts-phonon-credit')).toBeNull();
       expect(queryByText(/phonon/i)).toBeNull();
-      expect(getEngineGroupCount(queryByTestId)).toBe(3);
+      expect(getEngineGroupCount(queryByTestId)).toBe(4);
     });
 
     it('shows download progress against its 64 MB size', () => {

@@ -290,6 +290,12 @@ class VoiceModeController {
       holdFirstChunk: modelStore.activeModel?.origin !== ModelOrigin.REMOTE,
     });
     ttsStore.stop('voice_enter').catch(() => {});
+    // Warm the neural engine while the mic opens: the first reply clause can
+    // then be synthesized immediately instead of queueing behind a 57–380 MB
+    // model load.
+    ttsStore.prewarm().catch(() => {
+      // prewarm logs and swallows its own errors.
+    });
     this.releaseAwake = acquireKeepAwake();
     this.setPhase('starting', 'enter');
     voiceModeStore.setPresentation('full');

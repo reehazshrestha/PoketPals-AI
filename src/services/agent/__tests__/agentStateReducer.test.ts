@@ -20,6 +20,7 @@ describe('agentStateReducer', () => {
       status: 'prefill',
       pendingTalentNames: [],
       hitMaxTurns: false,
+      activeToolName: null,
     });
   });
 

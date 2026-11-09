@@ -31,7 +31,8 @@ export const useTheme = (): Theme => {
   const paperTheme = usePaperTheme<MD3Theme>();
   const mode = uiStore.colorScheme;
   const language = uiStore.language;
-  const key = `${mode}:${language}`;
+  const palette = uiStore.accentPalette;
+  const key = `${mode}:${language}:${palette}`;
 
   let byKey = themeCache.get(paperTheme);
   if (byKey === undefined) {
@@ -43,7 +44,7 @@ export const useTheme = (): Theme => {
   if (cached === undefined) {
     cached = {
       ...paperTheme,
-      ...buildTheme({mode, language}),
+      ...buildTheme({mode, language, palette}),
     } as Theme;
     byKey.set(key, cached);
   }

@@ -22,6 +22,7 @@ const engineChipKey = {
   kokoro: 'engineChipKokoro',
   supertonic: 'engineChipSupertonic',
   phonon: 'engineChipPhonon',
+  piper: 'engineChipPiper',
   system: 'engineChipSystem',
 } as const satisfies Record<EngineId, string>;
 

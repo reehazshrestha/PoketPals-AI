@@ -7,7 +7,10 @@ import type {EngineId} from '../../services/tts';
 
 import {createStyles} from './styles';
 
-const LOGO_SOURCES: Record<Exclude<EngineId, 'system' | 'phonon'>, number> = {
+const LOGO_SOURCES: Record<
+  Exclude<EngineId, 'system' | 'phonon' | 'piper'>,
+  number
+> = {
   kitten: require('../../assets/images/engines/kitten.png'),
   kokoro: require('../../assets/images/engines/kokoro.png'),
   supertonic: require('../../assets/images/engines/supertonic.png'),
@@ -18,6 +21,7 @@ const BRAND_BG: Record<EngineId, string> = {
   kokoro: '#17151F',
   supertonic: '#1E4DF6',
   phonon: '#0E9F8E',
+  piper: '#2B7CD3',
   system: '#F1F2F5',
 };
 
@@ -107,7 +111,7 @@ export const EngineLogo: React.FC<EngineLogoProps> = ({
             backgroundColor: bg,
           },
         ]}>
-        {engineId === 'phonon' ? (
+        {engineId === 'phonon' || engineId === 'piper' ? (
           <PhononGlyph size={inner} />
         ) : (
           <Image

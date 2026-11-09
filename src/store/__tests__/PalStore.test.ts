@@ -7,7 +7,6 @@ import type {Pal} from '../../types/pal';
 import type {PalsHubPal} from '../../types/palshub';
 import * as imageUtils from '../../utils/imageUtils';
 import {resolveHFModelForDownload} from '../../utils/hfResolve';
-import {LOOKIE_DEFAULT_MODEL} from '../builtinPalModels';
 
 jest.mock('@react-native-async-storage/async-storage', () => {
   const values = new Map<string, string>();
@@ -153,12 +152,12 @@ describe('PalStore', () => {
       consoleSpy.mockRestore();
     });
 
-    it('creates the Lookie pal from the offline constant without a network resolve', async () => {
+    it('creates the Kim pal on first initialization without a network resolve', async () => {
       (palRepository.getAllPals as jest.Mock).mockResolvedValue([]);
       (palRepository.createPal as jest.Mock).mockImplementation(
         async (palData: any) => ({
           ...palData,
-          id: 'lookie-id',
+          id: 'kim-id',
           created_at: 'now',
           updated_at: 'now',
         }),
@@ -168,42 +167,40 @@ describe('PalStore', () => {
       new (palStore.constructor as any)();
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const lookieCall = (palRepository.createPal as jest.Mock).mock.calls.find(
-        call => call[0]?.name === 'Lookie',
+      const kimCall = (palRepository.createPal as jest.Mock).mock.calls.find(
+        call => call[0]?.name === 'Kim',
       );
 
-      expect(lookieCall).toBeDefined();
-      expect(lookieCall![0].defaultModel).toBe(LOOKIE_DEFAULT_MODEL);
+      expect(kimCall).toBeDefined();
+      expect(kimCall![0].defaultModel).toBeUndefined();
+      expect(kimCall![0].systemPrompt).toContain('You are Kim');
       // No HF resolve / network call at pal init.
       expect(resolveHFModelForDownload).not.toHaveBeenCalled();
     });
 
-    it('does not recreate the Lookie pal if one already exists', async () => {
-      const existingLookie: Pal = {
+    it('does not create another Kim pal when one already exists', async () => {
+      const existingKim: Pal = {
         ...mockPal,
-        id: 'existing-lookie',
-        name: 'Lookie',
-        capabilities: {video: true},
-      } as Pal;
-      (palRepository.getAllPals as jest.Mock).mockResolvedValue([
-        existingLookie,
-      ]);
+        id: 'existing-kim',
+        name: 'Kim',
+      };
+      (palRepository.getAllPals as jest.Mock).mockResolvedValue([existingKim]);
 
       // eslint-disable-next-line no-new
       new (palStore.constructor as any)();
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const lookieCreate = (
-        palRepository.createPal as jest.Mock
-      ).mock.calls.find(call => call[0]?.name === 'Lookie');
-      expect(lookieCreate).toBeUndefined();
+      const kimCreate = (palRepository.createPal as jest.Mock).mock.calls.find(
+        call => call[0]?.name === 'Kim',
+      );
+      expect(kimCreate).toBeUndefined();
       expect(resolveHFModelForDownload).not.toHaveBeenCalled();
     });
   });
 
-  describe('Pip seeding', () => {
-    const callInitializePipPal = async () =>
-      (palStore as any).initializePipPal();
+  describe('Kim seeding', () => {
+    const callInitializeKimPal = async () =>
+      (palStore as any).initializeKimPal();
 
     beforeEach(() => {
       runInAction(() => {
@@ -212,36 +209,43 @@ describe('PalStore', () => {
       (palRepository.createPal as jest.Mock).mockImplementation(
         async (palData: any) => ({
           ...palData,
-          id: `pip-${Math.random().toString(36).slice(2, 8)}`,
+          id: `kim-${Math.random().toString(36).slice(2, 8)}`,
           created_at: '2026-05-26T00:00:00Z',
           updated_at: '2026-05-26T00:00:00Z',
         }),
       );
+      (palRepository.updatePal as jest.Mock).mockImplementation(
+        async (id: string, updates: Partial<Pal>) => ({
+          ...palStore.pals.find(p => p.id === id),
+          ...updates,
+        }),
+      );
     });
 
-    it('seeds Pip when absent', async () => {
-      await callInitializePipPal();
-      const pip = palStore.pals.find(
-        p => p.name === 'Pip' && p.source === 'local',
+    it('seeds Kim when absent', async () => {
+      await callInitializeKimPal();
+      const kim = palStore.pals.find(
+        p => p.name === 'Kim' && p.source === 'local',
       );
-      expect(pip).toBeDefined();
-      expect(pip?.type).toBe('local');
-      expect(pip?.defaultModel).toBeUndefined();
+      expect(kim).toBeDefined();
+      expect(kim?.type).toBe('local');
+      expect(kim?.defaultModel).toBeUndefined();
+      expect(kim?.systemPrompt).toContain('You are Kim');
       expect(palRepository.createPal).toHaveBeenCalledTimes(1);
     });
 
-    it('is a no-op when Pip is already present', async () => {
-      await callInitializePipPal();
+    it('is a no-op when Kim is already present', async () => {
+      await callInitializeKimPal();
       (palRepository.createPal as jest.Mock).mockClear();
-      await callInitializePipPal();
-      const pipCount = palStore.pals.filter(
-        p => p.name === 'Pip' && p.source === 'local',
+      await callInitializeKimPal();
+      const kimCount = palStore.pals.filter(
+        p => p.name === 'Kim' && p.source === 'local',
       ).length;
-      expect(pipCount).toBe(1);
+      expect(kimCount).toBe(1);
       expect(palRepository.createPal).not.toHaveBeenCalled();
     });
 
-    it('preserves an existing Pip record (including defaultModel) on re-init', async () => {
+    it('upgrades an existing Pip in place and preserves defaultModel', async () => {
       const boundModel = {
         id: 'some-bound-model',
         name: 'Some Bound Model',
@@ -252,27 +256,53 @@ describe('PalStore', () => {
         name: 'Pip',
         source: 'local',
         type: 'local',
+        systemPrompt: 'You are Pip, a helpful assistant.',
+        originalSystemPrompt: 'You are Pip, a helpful assistant.',
         defaultModel: boundModel,
       } as any;
       runInAction(() => {
         palStore.pals = [existingPip];
       });
 
-      await callInitializePipPal();
+      await callInitializeKimPal();
 
-      const pip = palStore.pals.find(
-        p => p.name === 'Pip' && p.source === 'local',
-      );
-      expect(pip).toBeDefined();
-      expect(pip?.id).toBe('pip-existing');
-      // defaultModel content is preserved across re-init (MobX wraps
+      const kim = palStore.pals.find(p => p.source === 'local');
+      expect(kim).toBeDefined();
+      // Same id keeps chat history and settings bound to the pal.
+      expect(kim?.id).toBe('pip-existing');
+      expect(kim?.name).toBe('Kim');
+      expect(kim?.systemPrompt).toContain('You are Kim');
+      // defaultModel content is preserved across the rename (MobX wraps
       // observed objects in Proxies, so Object.is equality is brittle;
       // value equality verifies the field wasn't cleared or rewritten).
-      expect(pip?.defaultModel).toEqual(boundModel);
+      expect(kim?.defaultModel).toEqual(boundModel);
       expect(palRepository.createPal).not.toHaveBeenCalled();
     });
 
-    it('coexists with Lookie regardless of order (idempotent)', async () => {
+    it('keeps a user-edited Pip prompt while renaming the pal', async () => {
+      const customPrompt = 'You are my custom Pip with special rules.';
+      const editedPip: Pal = {
+        ...mockPal,
+        id: 'pip-edited',
+        name: 'Pip',
+        source: 'local',
+        type: 'local',
+        systemPrompt: customPrompt,
+        originalSystemPrompt: customPrompt,
+        isSystemPromptChanged: true,
+      };
+      runInAction(() => {
+        palStore.pals = [editedPip];
+      });
+
+      await callInitializeKimPal();
+
+      const kim = palStore.pals[0];
+      expect(kim.name).toBe('Kim');
+      expect(kim.systemPrompt).toBe(customPrompt);
+    });
+
+    it('coexists with video pals without touching them', async () => {
       const lookie: Pal = {
         ...mockPal,
         id: 'lookie-1',
@@ -285,19 +315,16 @@ describe('PalStore', () => {
         palStore.pals = [lookie];
       });
 
-      await callInitializePipPal();
-      await callInitializePipPal();
+      await callInitializeKimPal();
+      await callInitializeKimPal();
 
       const names = palStore.pals.map(p => p.name).sort();
-      expect(names).toEqual(['Lookie', 'Pip']);
+      expect(names).toEqual(['Kim', 'Lookie']);
     });
   });
 
-  describe.each([
-    ['Lookie', 'initializeLookiePal'],
-    ['Pip', 'initializePipPal'],
-  ])('%s seed persistence', (name, initializer) => {
-    const seed = () => (palStore as any)[initializer]();
+  describe('Kim seed persistence', () => {
+    const seed = () => (palStore as any).initializeKimPal();
 
     beforeEach(() => {
       (palRepository.createPal as jest.Mock).mockImplementation(
@@ -306,7 +333,7 @@ describe('PalStore', () => {
       (palRepository.deletePal as jest.Mock).mockResolvedValue(true);
     });
 
-    it('does not recreate a deleted default pal on the next initialization', async () => {
+    it('does not recreate a deleted Kim pal on the next initialization', async () => {
       await seed();
       await palStore.deletePal(palStore.pals[0].id);
       expect(palStore.pals).toHaveLength(0);
@@ -318,7 +345,7 @@ describe('PalStore', () => {
       expect(palStore.pals).toHaveLength(0);
     });
 
-    it('does not recreate a default pal after it is renamed', async () => {
+    it('does not recreate Kim after the pal is renamed', async () => {
       await seed();
       runInAction(() => {
         palStore.pals[0].name = 'My renamed pal';
@@ -332,9 +359,9 @@ describe('PalStore', () => {
       expect(palStore.pals[0].name).toBe('My renamed pal');
     });
 
-    it('records existing default pals before they are deleted', async () => {
+    it('records existing Kim pals before they are deleted', async () => {
       runInAction(() => {
-        palStore.pals = [{...mockPal, name, capabilities: {video: true}}];
+        palStore.pals = [{...mockPal, name: 'Kim'}];
       });
       await seed();
       expect(palRepository.createPal).not.toHaveBeenCalled();
@@ -356,7 +383,7 @@ describe('PalStore', () => {
       await seed();
 
       expect(palRepository.createPal).toHaveBeenCalledTimes(2);
-      expect(palStore.pals[0].name).toBe(name);
+      expect(palStore.pals[0].name).toBe('Kim');
     });
   });
 

@@ -67,8 +67,14 @@ export class VoiceModeStore {
     return this.phase !== 'closed' && this.presentation === 'full';
   }
 
+  /**
+   * Hands-off conversation is a free feature in this build: the pipeline is
+   * not gated on the Plus purchase any more. The dev/E2E override can still
+   * force either state. Device capability is a separate gate (`supported`),
+   * so low-tier hardware stays out.
+   */
   get isUnlocked(): boolean {
-    return voiceEntitlement.source.isUnlocked();
+    return this.unlockOverride ?? true;
   }
 
   /** `useVoiceMode` only. */

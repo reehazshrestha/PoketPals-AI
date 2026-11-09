@@ -48,7 +48,17 @@ import {getRecommendedProjectionModel} from '../utils/multimodalHelpers';
 import {isDraftOnlyModel} from '../utils/mtp';
 import {getOriginalModelName} from '../utils/formatters';
 import {stopQuietly} from '../utils/stopQuietly';
+import {
+  detectModelProfile,
+  smallModelContextTuning,
+  smallModelDelegateHint,
+  smallModelThreadCount,
+} from '../utils/modelProfile';
 import type {OnboardingPalModelEntry} from './onboarding/onboardingPals';
+import {
+  LOW_LATENCY_CONTEXT_PARAMS,
+  QWEN25_05B_INSTRUCT_MODEL,
+} from './builtinModels';
 
 import {downloadManager, DownloadCancelledError} from '../services/downloads';
 import {classify, ClassifyPlatform} from '../services/deviceRules/classify';
@@ -322,6 +332,15 @@ class ModelStore {
       onComplete: async modelId => {
         const model = this.models.find(m => m.id === modelId);
         if (model) {
+          // Pinned-checksum models opt into a full-file hash gate. It is
+          // expensive, so only built-ins that ship an expectedSha256 pay it.
+          if (model.expectedSha256) {
+            const checksumOk = await this.verifyDownloadedChecksum(model);
+            if (!checksumOk) {
+              return;
+            }
+          }
+
           runInAction(() => {
             model.progress = 100;
             model.isDownloaded = true;
@@ -331,6 +350,18 @@ class ModelStore {
           // Skip for projection models (CLIP) - they have different metadata structure
           if (model.modelType !== ModelType.PROJECTION) {
             await this.fetchAndPersistGGUFMetadata(model);
+          }
+
+          // Low Latency Mode may have started this download on a platform
+          // whose download call returns before completion. Select the model
+          // once it is verified and on disk, unless the user has since
+          // switched the mode off.
+          if (
+            this.pendingLowLatencyModelId === model.id &&
+            uiStore.lowLatencyMode
+          ) {
+            this.pendingLowLatencyModelId = null;
+            await this.selectModel(model);
           }
         }
       },
@@ -792,6 +823,7 @@ class ModelStore {
     // Apply the bundled offline floor immediately (no network) so the list is
     // never empty while a slow rules fetch is in flight, then merge/reconcile.
     const presets = await this.resolvePresets();
+    this.registerBuiltinModels();
 
     if (storedVersion < MODEL_LIST_VERSION) {
       await this.mergeModelLists(presets);
@@ -2337,10 +2369,52 @@ class ModelStore {
 
     // Get all effective initialization settings BEFORE try block
     // so they're available for error reporting if initialization fails
-    const effectiveSettings = await this.getEffectiveContextInitParams(
+    let effectiveSettings = await this.getEffectiveContextInitParams(
       filePath,
       draftConfig,
     );
+
+    // 1B-class 4-bit models are the ones that fit budget hardware. Apply the
+    // profile's context/batch caps, and (only when the user hasn't pinned
+    // devices) its delegate hint, before the params reach `initLlama`.
+    const profile = detectModelProfile({filePath, modelName: model.name});
+    if (profile.isSmall4Bit) {
+      effectiveSettings = {
+        ...effectiveSettings,
+        ...smallModelContextTuning(effectiveSettings),
+      };
+      // Decode speed is set by the slowest thread: on a big.LITTLE phone the
+      // 80%-of-cores default schedules work onto the little cluster and the
+      // big cores wait on it. Pin to the performance cores.
+      const tunedThreads = smallModelThreadCount({
+        currentThreads: effectiveSettings.n_threads,
+        coreCount: this.max_threads || null,
+      });
+      if (tunedThreads !== null) {
+        console.log(
+          `[ModelStore] small 4-bit profile: n_threads ${effectiveSettings.n_threads} → ${tunedThreads} (performance cores)`,
+        );
+        effectiveSettings = {...effectiveSettings, n_threads: tunedThreads};
+      }
+      if (this.contextInitParams.devices === undefined) {
+        const hint = smallModelDelegateHint({
+          platform: Platform.OS,
+          deviceTier: this.deviceTier,
+        });
+        if (hint) {
+          effectiveSettings = {
+            ...effectiveSettings,
+            devices: hint.devices,
+            n_gpu_layers: hint.n_gpu_layers,
+          };
+          console.log(`[ModelStore] small 4-bit profile: ${hint.reason}`);
+        }
+      }
+      console.log(
+        `[ModelStore] small 4-bit profile active: ${profile.quantization} ` +
+          `${profile.paramsBillions ?? '?'}B`,
+      );
+    }
 
     try {
       // Create properly versioned ContextInitParams
@@ -2977,6 +3051,117 @@ class ModelStore {
       siblings: [] as ModelFile[],
     } as HuggingFaceModel;
     return this.addHFModel(hfModel, modelFile);
+  };
+
+  /**
+   * Register built-in models that are always offered in the picker, even
+   * though they are not part of the device-rule preset list. Idempotent and
+   * non-destructive: a persisted record (including its download state) wins.
+   */
+  private registerBuiltinModels = (): void => {
+    const existing = this.models.find(
+      m => m.id === QWEN25_05B_INSTRUCT_MODEL.id,
+    );
+    if (existing) {
+      if (!existing.expectedSha256) {
+        runInAction(() => {
+          existing.expectedSha256 = QWEN25_05B_INSTRUCT_MODEL.expectedSha256;
+        });
+      }
+      return;
+    }
+    runInAction(() => {
+      this.models = [...this.models, {...QWEN25_05B_INSTRUCT_MODEL}];
+    });
+  };
+
+  /**
+   * Full-file SHA-256 gate for models whose upstream checksum is pinned in
+   * code. On mismatch (or an unreadable file) the bad download is removed and
+   * surfaced through the normal download-error channel.
+   */
+  private verifyDownloadedChecksum = async (model: Model): Promise<boolean> => {
+    const expected = model.expectedSha256?.toLowerCase();
+    if (!expected) {
+      return true;
+    }
+    let filePath: string | undefined;
+    try {
+      filePath = await this.getModelFullPath(model);
+      const actual = (await getSHA256Hash(filePath)).toLowerCase();
+      if (actual === expected) {
+        return true;
+      }
+      throw new Error(
+        `Checksum mismatch for ${model.name}: expected ${expected.slice(
+          0,
+          12,
+        )}…, got ${actual.slice(0, 12)}…`,
+      );
+    } catch (error) {
+      if (filePath) {
+        await RNFS.unlink(filePath).catch(() => undefined);
+      }
+      runInAction(() => {
+        model.isDownloaded = false;
+        model.progress = 0;
+        this.downloadError = createErrorState(
+          error instanceof Error ? error : new Error(String(error)),
+          'download',
+          'huggingface',
+          {modelId: model.id},
+        );
+      });
+      console.error(
+        '[ModelStore] download checksum verification failed:',
+        error,
+      );
+      return false;
+    }
+  };
+
+  /**
+   * Low Latency Mode entry point: apply the sub-500M runtime profile, then
+   * download and select Qwen2.5 0.5B. The user can switch back to any other
+   * model afterwards through the normal picker.
+   */
+  private pendingLowLatencyModelId: string | null = null;
+
+  activateLowLatencyModel = async (): Promise<Model | undefined> => {
+    let model = this.models.find(m => m.id === QWEN25_05B_INSTRUCT_MODEL.id);
+    if (!model) {
+      this.registerBuiltinModels();
+      model = this.models.find(m => m.id === QWEN25_05B_INSTRUCT_MODEL.id);
+    }
+    if (!model) {
+      return undefined;
+    }
+
+    const recommendedThreads = await getRecommendedThreadCount().catch(
+      () => this.contextInitParams.n_threads,
+    );
+    runInAction(() => {
+      this.contextInitParams = {
+        ...this.contextInitParams,
+        ...LOW_LATENCY_CONTEXT_PARAMS,
+        n_threads: recommendedThreads,
+      };
+    });
+
+    this.pendingLowLatencyModelId = model.id;
+    if (!model.isDownloaded) {
+      await this.checkSpaceAndDownload(model.id);
+    }
+    // Downloads may still be running (Android starts natively and returns;
+    // checksum verification is async). `onComplete` selects the model when
+    // it becomes ready. If it is already ready, select it now.
+    if (model.isDownloaded) {
+      this.pendingLowLatencyModelId = null;
+      if (this.activeModelId !== model.id || !this.context) {
+        await this.selectModel(model);
+      }
+    }
+    return model;
   };
 
   removeModelByFullPath = (fullPath: string) => {

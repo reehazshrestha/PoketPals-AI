@@ -119,11 +119,11 @@ describe('useOnboardingHandlers', () => {
   });
 
   describe('finish', () => {
-    it('topic=smartchat with existing Pip pal: rebinds defaultModel, then completes + downloads', async () => {
+    it('topic=smartchat with existing Kim pal: rebinds defaultModel, then completes + downloads', async () => {
       palStore.pals = [
         {
           id: 'pip-id',
-          name: 'Pip',
+          name: 'Kim',
           source: 'local',
           type: 'local',
           description: 'desc',
@@ -181,7 +181,7 @@ describe('useOnboardingHandlers', () => {
       );
     });
 
-    it('topic=null falls back to Pip (the else→pip mapping)', async () => {
+    it('topic=null falls back to Kim (the else→Kim mapping)', async () => {
       palStore.pals = [];
       uiStore.onboardingState.selectedModelId = PIP_BALANCED_ID;
       uiStore.onboardingState.selectedTopic = null;
@@ -193,7 +193,7 @@ describe('useOnboardingHandlers', () => {
 
       expect(palStore.createPal).toHaveBeenCalledTimes(1);
       const palData = (palStore.createPal as jest.Mock).mock.calls[0][0];
-      expect(palData.name).toBe('Pip');
+      expect(palData.name).toBe('Kim');
     });
 
     it('with selectedModelId=null, completes onboarding without touching the pal store or download queue', async () => {

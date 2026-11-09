@@ -27,12 +27,14 @@ import type {
   Voice,
   VoiceFileSource,
 } from '../../types';
+import {executionProvidersFromPreference} from '../../executionProviders';
 import {SUPERTONIC_VOICES} from './voices';
 
 export type SupertonicProgressCallback = (progress: number) => void;
 
 /**
  * Engine-level fallback language, used only if a caller omits `language`.
+ *
  * The app always passes `ttsStore.supertonicLanguage` explicitly, so this
  * default never governs in practice; it matches the store default (`na`,
  * language-agnostic "Auto") to avoid two competing defaults.
@@ -57,8 +59,7 @@ const isUsableStyle = (text: string): boolean => {
  * `NSURLIsExcludedFromBackupKey` set on the parent `tts/` directory at
  * mkdir time) and `files/tts/supertonic/` on Android (excluded via backup
  * rules XML).
- *
- * v3 keeps the v2 filenames, so a version sentinel written as the final
+ *   * v3 keeps the v2 filenames, so a version sentinel written as the final
  * download step distinguishes a fresh v3 install from a stale v2 one;
  * `isInstalled()` requires the sentinel at `SUPERTONIC_MODEL_VERSION`,
  * forcing legacy v2 users through one clean re-download.
@@ -67,6 +68,11 @@ const isUsableStyle = (text: string): boolean => {
  * `@pocketpalai/react-native-speech`. The engine lazily calls
  * `Speech.initialize()` on first play; subsequent plays reuse the
  * initialized engine.
+ *
+ * Note: the shipped ORT RN bundle does not expose NNAPI, so NNAPI is
+ * best-effort-mapped to xnnpack in `executionProvidersFromPreference`.
+ * This is intentionally coarse and only affects the on-device TTS init
+ * path; it does NOT affect streaming or fallback behavior.
  */
 export class SupertonicEngine implements NeuralEngine {
   readonly id = 'supertonic' as const;
@@ -335,7 +341,7 @@ export class SupertonicEngine implements NeuralEngine {
       silentMode: 'obey',
       ducking: true,
       maxChunkSize: 200,
-      executionProviders: ['cpu'],
+      executionProviders: executionProvidersFromPreference(),
     });
   }
 

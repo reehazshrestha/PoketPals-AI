@@ -3,6 +3,7 @@ import {getAllEngines, getEngine, getNeuralEngine} from '../engineRegistry';
 import {KittenEngine} from '../engines/kitten';
 import {KokoroEngine} from '../engines/kokoro';
 import {PhononEngine} from '../engines/phonon';
+import {PiperEngine} from '../engines/piper';
 import {SupertonicEngine} from '../engines/supertonic';
 import {SystemEngine} from '../engines/system';
 
@@ -37,11 +38,18 @@ describe('engineRegistry', () => {
     expect(engine.id).toBe('phonon');
   });
 
-  it('getAllEngines returns the five engines in setup-sheet order: phonon, kitten, kokoro, supertonic, system', () => {
+  it('returns the Piper engine for id "piper"', () => {
+    const engine = getEngine('piper');
+    expect(engine).toBeInstanceOf(PiperEngine);
+    expect(engine.id).toBe('piper');
+  });
+
+  it('getAllEngines returns the six engines in setup-sheet order: phonon, piper, kitten, kokoro, supertonic, system', () => {
     const all = getAllEngines();
-    expect(all).toHaveLength(5);
+    expect(all).toHaveLength(6);
     expect(all.map(e => e.id)).toEqual([
       'phonon',
+      'piper',
       'kitten',
       'kokoro',
       'supertonic',

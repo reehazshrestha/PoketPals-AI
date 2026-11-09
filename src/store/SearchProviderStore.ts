@@ -26,10 +26,12 @@ export const SEARCH_PROVIDERS: SearchProviderMeta[] = [
   {id: 'exa', label: 'Exa', selectable: true},
   {id: 'firecrawl', label: 'Firecrawl', selectable: true},
   {id: 'you', label: 'You.com', selectable: true, requiresKey: false},
+  {id: 'duckduckgo', label: 'DuckDuckGo', selectable: true, requiresKey: false},
   {id: 'parallel', label: 'Parallel', selectable: false},
 ];
 
-const DEFAULT_PROVIDER: SearchProviderId = 'brave';
+/** Keyless so search works on a fresh install; brave/tavily/exa need a key. */
+const DEFAULT_PROVIDER: SearchProviderId = 'you';
 const DEFAULT_RESULT_COUNT = 5;
 const MIN_RESULT_COUNT = 1;
 const MAX_RESULT_COUNT = 8;
@@ -37,7 +39,8 @@ const MAX_RESULT_COUNT = 8;
 class SearchProviderStore {
   activeProviderId: SearchProviderId = DEFAULT_PROVIDER;
   resultCount: number = DEFAULT_RESULT_COUNT;
-  hasConsentedToSearch = false;
+  /** On by default: a personal free-search build shouldn't need a hidden tap first. */
+  hasConsentedToSearch = true;
 
   /** In-memory mirror of each provider's BYOK key (source of truth: Keychain). */
   private keys: Partial<Record<SearchProviderId, string>> = {};

@@ -8,6 +8,7 @@ import {
 import {AboutScreen} from '../AboutScreen';
 import {submitFeedback} from '../../../api/feedback';
 import {l10n} from '../../../locales';
+import {REPO_URL} from '../../../config/urls';
 
 const render = (ui: React.ReactElement, options: any = {}) =>
   baseRender(ui, {withBottomSheetProvider: true, ...options});
@@ -40,9 +41,9 @@ describe('AboutScreen', () => {
   });
 
   it('renders correctly', () => {
-    const {getByText} = render(<AboutScreen />);
+    const {getAllByText, getByText} = render(<AboutScreen />);
 
-    expect(getByText('PocketPal AI')).toBeTruthy();
+    expect(getAllByText('PoketPals AI').length).toBeGreaterThan(0);
     expect(getByText('v1.0.0 (100)')).toBeTruthy();
     expect(getByText(l10n.en.about.supportProject)).toBeTruthy();
     expect(getByText(l10n.en.about.githubButton)).toBeTruthy();
@@ -73,8 +74,8 @@ describe('AboutScreen', () => {
   it('gives each legal link a 44pt tap target with its role', () => {
     const {getByRole} = render(<AboutScreen />);
 
-    const privacy = getByRole('link', {name: l10n.en.about.privacyPolicy});
-    const terms = getByRole('link', {name: l10n.en.about.termsOfService});
+    const privacy = getByRole('button', {name: l10n.en.about.privacyPolicy});
+    const terms = getByRole('button', {name: l10n.en.about.termsOfService});
     const notices = getByRole('button', {
       name: l10n.en.about.openSourceNotices,
     });
@@ -82,13 +83,29 @@ describe('AboutScreen', () => {
       expect(target).toHaveStyle({minHeight: 44});
     }
 
-    fireEvent.press(privacy);
-    fireEvent.press(terms);
-    expect(Linking.openURL).toHaveBeenCalledWith(
-      'https://pocketpal.dev/privacy-policy',
-    );
-    expect(Linking.openURL).toHaveBeenCalledWith('https://pocketpal.dev/terms');
+    expect(privacy.props.testID).toBe('about-privacy-policy');
+    expect(terms.props.testID).toBe('about-terms-of-service');
     expect(notices.props.testID).toBe('about-open-source-notices');
+  });
+
+  it('opens the bundled privacy policy offline', () => {
+    const {getByTestId, getByText} = render(<AboutScreen />);
+
+    fireEvent.press(getByTestId('about-privacy-policy'));
+
+    expect(getByTestId('about-legal-sheet')).toBeTruthy();
+    expect(getByText('The short version')).toBeTruthy();
+    expect(Linking.openURL).not.toHaveBeenCalled();
+  });
+
+  it('opens the bundled terms of service offline', () => {
+    const {getByTestId, getByText} = render(<AboutScreen />);
+
+    fireEvent.press(getByTestId('about-terms-of-service'));
+
+    expect(getByTestId('about-legal-sheet')).toBeTruthy();
+    expect(getByText('What PoketPals AI is')).toBeTruthy();
+    expect(Linking.openURL).not.toHaveBeenCalled();
   });
 
   it('hides the separator before a legal link that wraps to the next line', () => {
@@ -111,14 +128,13 @@ describe('AboutScreen', () => {
     expect(second).toHaveStyle({opacity: 0});
   });
 
-  it('opens GitHub URL when GitHub button is pressed', () => {
-    const {getByText} = render(<AboutScreen />);
+  it('links the About section to the PoketPals AI repository', () => {
+    const {getByTestId} = render(<AboutScreen />);
 
-    fireEvent.press(getByText('Star on GitHub'));
+    fireEvent.press(getByTestId('about-github'));
 
-    expect(Linking.openURL).toHaveBeenCalledWith(
-      'https://github.com/a-ghorbani/pocketpal-ai',
-    );
+    expect(Linking.openURL).toHaveBeenCalledWith(REPO_URL);
+    expect(REPO_URL).toBe('https://github.com/reehazshrestha/PoketPals-AI');
   });
 
   describe.each(['android', 'ios'] as const)('on %s', os => {
@@ -132,13 +148,13 @@ describe('AboutScreen', () => {
       Platform.OS = originalOS;
     });
 
-    it('shows no sponsorship option in the support section', () => {
+    it('shows only the repository link in the support section', () => {
       const {queryByText, getByText} = render(<AboutScreen />);
 
       expect(queryByText('Become a Sponsor')).toBeNull();
       expect(queryByText('or')).toBeNull();
       expect(getByText(l10n.en.about.githubButton)).toBeTruthy();
-      expect(getByText(l10n.en.about.orBy)).toBeTruthy();
+      expect(queryByText(l10n.en.about.orBy)).toBeNull();
       expect(getByText(l10n.en.feedback.shareThoughtsButton)).toBeTruthy();
     });
   });

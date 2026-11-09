@@ -28,7 +28,6 @@ import {hfAsModel} from '../utils';
 import {resolveHFModelForDownload} from '../utils/hfResolve';
 import {palsHubService} from '../services';
 import {registerDefaultTalents} from '../services/talents';
-import {LOOKIE_DEFAULT_MODEL} from './builtinPalModels';
 import {chatTemplates} from '../utils/chat';
 import {defaultCompletionParams} from '../utils/completionSettingsVersions';
 import {parsePalsHubTemplate} from '../utils/palshub-template-parser';
@@ -47,11 +46,17 @@ import {ModelOrigin} from '../utils/types';
 import type {Model} from '../utils/types';
 import {downloadPalThumbnail, deletePalThumbnail} from '../utils/imageUtils';
 
-// Track each built-in separately so future defaults can still be introduced.
-// TODO: when adding another built-in pal, extract a shared seed-once helper
-// (check key, find existing, create, set key) instead of a third copy.
-const LOOKIE_SEEDED_KEY = 'PalStore.builtin.Lookie.seeded';
-const PIP_SEEDED_KEY = 'PalStore.builtin.Pip.seeded';
+// Seed-once key for the built-in assistant. The id is stable even though the
+// display name changed from "Pip" to "Kim", so an upgraded install updates the
+// existing record instead of creating a duplicate.
+const KIM_SEEDED_KEY = 'PalStore.builtin.Kim.seeded';
+
+const KIM_SYSTEM_PROMPT =
+  'You are Kim, a sharp, practical assistant that runs entirely on the user’s phone. ' +
+  'Answer in the user’s language and lead with the answer. Keep replies short and ' +
+  'scannable: 1–3 short paragraphs, or a short list when steps are involved. Be warm ' +
+  'and direct, cut filler and emoji, and say plainly when you are unsure. For concrete ' +
+  'requests, give the exact steps or code instead of a general explanation.';
 
 interface CreatorUpdateContext {
   fresh: Pal;
@@ -156,11 +161,8 @@ class PalStore {
       // Load pals from database
       await this.loadPalsFromDatabase();
 
-      // Initialize Lookie pal after database is loaded
-      await this.initializeLookiePal();
-
-      // Initialize Pip pal (idempotent — see initializePipPal).
-      await this.initializePipPal();
+      // Initialize the built-in assistant (idempotent — see initializeKimPal).
+      await this.initializeKimPal();
 
       // Register talent engines (idempotent)
       registerDefaultTalents();
@@ -802,94 +804,50 @@ class PalStore {
   };
 
   /**
-   * Seed the default "Lookie" VideoPal once. After the first launch that
-   * records the seed, deletions and renames are preserved; on that launch a
-   * missing Lookie is created (installs that predate the key included).
-   */
-  private async initializeLookiePal(): Promise<void> {
-    try {
-      if ((await AsyncStorage.getItem(LOOKIE_SEEDED_KEY)) === 'true') {
-        return;
-      }
-
-      // Check if Lookie already exists
-      const lookiePal = this.pals.find(
-        p => p.capabilities?.video === true && p.name === 'Lookie',
-      );
-
-      if (!lookiePal) {
-        console.log('Creating default Lookie pal...');
-
-        // Offline constant — no network resolve at pal init.
-        const defaultModel = LOOKIE_DEFAULT_MODEL;
-
-        // Create the Lookie pal with all the original properties
-        const palData: Omit<Pal, 'id' | 'created_at' | 'updated_at'> = {
-          type: 'local',
-          name: 'Lookie',
-          description:
-            'Real-time video analysis assistant that provides concise descriptions of your camera feed.',
-          systemPrompt:
-            'You are Lookie, an AI assistant giving real-time, concise descriptions of a video feed. Use few words. If unsure, say so clearly.',
-          isSystemPromptChanged: false,
-          useAIPrompt: false,
-          defaultModel: defaultModel, // Set the default model so users know what to download
-          parameters: {
-            captureInterval: '3000', // 3 seconds (original value) - stored as string for text input
-          },
-          parameterSchema: [
-            {
-              key: 'captureInterval',
-              type: 'text',
-              label: 'Capture Interval (ms)',
-              required: false,
-            },
-          ],
-          capabilities: {video: true},
-          color: ['#9E204F', '#F6E1EA'], // Original Lookie colors
-          source: 'local',
-        };
-
-        await this.addPal(palData);
-      } else {
-        console.log('Lookie pal already exists, skipping creation');
-      }
-      await AsyncStorage.setItem(LOOKIE_SEEDED_KEY, 'true');
-    } catch (error) {
-      console.error('Error initializing Lookie pal:', error);
-    }
-  }
-
-  /**
-   * Seed the default "Pip" recommended pal once. After the first launch that
-   * records the seed, deletions and renames are preserved; on that launch a
-   * missing Pip is created (installs that predate the key included).
+   * Seed the built-in "Kim" assistant once.
    *
-   * Idempotent: a re-entry never overwrites an existing Pip record, so a
-   * `defaultModel` bound from a prior session (e.g. by the onboarding
-   * recommended-pal picker) survives subsequent app starts.
+   * Upgrades an existing local "Pip" record in place (same id) so its chat
+   * history and bound default model survive the rename. After the seed flag is
+   * written, later renames and deletions are the user's own and preserved.
    */
-  private async initializePipPal(): Promise<void> {
+  private async initializeKimPal(): Promise<void> {
     try {
-      if ((await AsyncStorage.getItem(PIP_SEEDED_KEY)) === 'true') {
+      if ((await AsyncStorage.getItem(KIM_SEEDED_KEY)) === 'true') {
         return;
       }
 
       const existing = this.pals.find(
-        p => p.name === 'Pip' && p.source === 'local',
+        p =>
+          p.source === 'local' &&
+          p.capabilities?.video !== true &&
+          (p.name === 'Kim' || p.name === 'Pip'),
       );
       if (existing) {
-        await AsyncStorage.setItem(PIP_SEEDED_KEY, 'true');
+        const isUnchangedPrompt =
+          !existing.isSystemPromptChanged ||
+          existing.systemPrompt?.includes('You are Pip');
+        if (existing.name !== 'Kim') {
+          await this.updatePal(existing.id, {
+            name: 'Kim',
+            systemPrompt: isUnchangedPrompt
+              ? KIM_SYSTEM_PROMPT
+              : existing.systemPrompt,
+            originalSystemPrompt: isUnchangedPrompt
+              ? KIM_SYSTEM_PROMPT
+              : existing.originalSystemPrompt,
+          });
+        }
+        await AsyncStorage.setItem(KIM_SEEDED_KEY, 'true');
         return;
       }
 
       const palData: Omit<Pal, 'id' | 'created_at' | 'updated_at'> = {
         type: 'local',
-        name: 'Pip',
+        name: 'Kim',
         description:
-          'A friendly general-purpose pal that runs entirely on your phone.',
-        systemPrompt:
-          'You are Pip, a friendly and helpful assistant who runs locally on the user’s phone. Keep replies concise and warm.',
+          'A sharp, practical assistant that runs entirely on your phone.',
+        systemPrompt: KIM_SYSTEM_PROMPT,
+        originalSystemPrompt: KIM_SYSTEM_PROMPT,
         isSystemPromptChanged: false,
         useAIPrompt: false,
         defaultModel: undefined,
@@ -901,9 +859,9 @@ class PalStore {
       };
 
       await this.addPal(palData);
-      await AsyncStorage.setItem(PIP_SEEDED_KEY, 'true');
+      await AsyncStorage.setItem(KIM_SEEDED_KEY, 'true');
     } catch (error) {
-      console.error('Error initializing Pip pal:', error);
+      console.error('Error initializing Kim pal:', error);
     }
   }
 }

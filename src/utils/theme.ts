@@ -6,6 +6,7 @@ import {
 
 import {Theme} from './types';
 import {
+  type AccentPaletteId,
   type Mode,
   resolveTokens,
   resolveTypographyForLocale,
@@ -100,12 +101,14 @@ const configuredFonts = configureFonts({
 export const buildTheme = ({
   mode,
   language,
+  palette = 'graphite',
 }: {
   mode: Mode;
   language: AvailableLanguage;
+  palette?: AccentPaletteId;
 }): Theme => {
   const baseTheme = mode === 'dark' ? MD3DarkTheme : PaperLightTheme;
-  const tokens = resolveTokens(mode);
+  const tokens = resolveTokens(mode, palette);
   const localeTypography = resolveTypographyForLocale(language);
 
   return {
@@ -120,7 +123,9 @@ export const buildTheme = ({
     },
     borders: {
       inputBorderRadius: 16,
-      messageBorderRadius: 15,
+      // iMessage-shaped bubbles: a soft 20pt radius reads as one continuous
+      // shape at the widths chat text actually reaches.
+      messageBorderRadius: 20,
       default: 12,
     },
     // Legacy fonts surface — preserved VERBATIM.

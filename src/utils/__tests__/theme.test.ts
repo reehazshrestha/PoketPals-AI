@@ -57,10 +57,10 @@ describe('Theme builder — legacy surface preservation', () => {
   });
 
   describe('borders', () => {
-    it("matches today's pinned values (16 / 15 / 12)", () => {
+    it("matches today's pinned values (16 / 20 / 12)", () => {
       expect(lightTheme.borders).toEqual({
         inputBorderRadius: 16,
-        messageBorderRadius: 15,
+        messageBorderRadius: 20,
         default: 12,
       });
     });

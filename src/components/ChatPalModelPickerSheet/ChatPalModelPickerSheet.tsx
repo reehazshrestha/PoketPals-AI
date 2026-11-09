@@ -251,16 +251,16 @@ export const ChatPalModelPickerSheet = observer(
       [styles, handleModelSelect],
     );
 
-    const getCapabilityText = React.useCallback(
-      (pal: Pal): string => {
-        if (pal.capabilities?.video) {
-          return l10n.components.chatPalModelPickerSheet.videoType;
-        }
+    // Video pals are intentionally not offered here: the chat picker is for
+    // text/vision assistants. Existing video records stay untouched in the
+    // database so no user data is lost, they are just hidden from this list.
+    const selectablePals = palStore.pals.filter(
+      pal => pal.capabilities?.video !== true,
+    );
 
-        // TODO: Add support for other capabilities
-        // Use assistant for now.
-        return l10n.components.chatPalModelPickerSheet.assistantType;
-      },
+    const getCapabilityText = React.useCallback(
+      (_pal: Pal): string =>
+        l10n.components.chatPalModelPickerSheet.assistantType,
       [l10n.components.chatPalModelPickerSheet],
     );
 
@@ -334,11 +334,17 @@ export const ChatPalModelPickerSheet = observer(
             contentContainerStyle={{paddingBottom: chatInputHeight + 66}}>
             {item.id === 'models'
               ? modelStore.availableModels.map(renderModelItem)
-              : [renderDisablePalItem(), ...palStore.pals.map(renderPalItem)]}
+              : [renderDisablePalItem(), ...selectablePals.map(renderPalItem)]}
           </BottomSheetScrollView>
         </View>
       ),
-      [chatInputHeight, renderDisablePalItem, renderModelItem, renderPalItem],
+      [
+        chatInputHeight,
+        renderDisablePalItem,
+        renderModelItem,
+        renderPalItem,
+        selectablePals,
+      ],
     );
 
     const onViewableItemsChanged = React.useCallback(

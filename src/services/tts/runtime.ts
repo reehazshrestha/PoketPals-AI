@@ -20,6 +20,8 @@ import type {Engine, EngineId} from './types';
 class TTSRuntime {
   /** id of the engine currently loaded in native land, null if released. */
   private activeEngineId: EngineId | null = null;
+  /** The instance behind `activeEngineId`, for optional JS-side release. */
+  private activeEngine: Engine | null = null;
   private stale = false;
   /** FIFO chain of pending operations — guarantees no concurrent swaps. */
   private opMutex: Promise<unknown> = Promise.resolve();
@@ -39,6 +41,7 @@ class TTSRuntime {
         }
         await engine.loadInto();
         this.activeEngineId = engine.id;
+        this.activeEngine = engine;
         this.stale = false;
       }
       return fn();
@@ -101,6 +104,7 @@ class TTSRuntime {
    */
   _resetForTests(): void {
     this.activeEngineId = null;
+    this.activeEngine = null;
     this.stale = false;
     this.opMutex = Promise.resolve();
   }
@@ -117,8 +121,14 @@ class TTSRuntime {
       } catch (err) {
         console.warn(`[ttsRuntime] release failed for ${prev}:`, err);
       }
+      try {
+        await this.activeEngine?.release?.();
+      } catch (err) {
+        console.warn(`[ttsRuntime] ${prev} JS release failed:`, err);
+      }
     }
     this.activeEngineId = null;
+    this.activeEngine = null;
     this.stale = false;
   }
 

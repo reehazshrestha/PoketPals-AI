@@ -37,6 +37,8 @@ import {
   KITTEN_MODEL_ESTIMATED_BYTES,
   PHONON_MODEL_ESTIMATED_BYTES,
   PHONON_VOICES,
+  PIPER_MODEL_ESTIMATED_BYTES,
+  PIPER_VOICES,
   SystemEngine,
   getEngine,
 } from '../../services/tts';
@@ -46,6 +48,7 @@ import {L10nContext} from '../../utils';
 
 import {AutoSpeakRow} from './AutoSpeakRow';
 import {createStyles} from './styles';
+import {DelegateRow} from './DelegateRow';
 import {EngineLogo} from './EngineLogo';
 import {ENGINE_META} from './engineMeta';
 import {HeroRow} from './HeroRow';
@@ -57,7 +60,13 @@ type DownloadState = 'not_installed' | 'downloading' | 'ready' | 'error';
 
 // System TTS hidden until language/accent/search filtering is built —
 // 180+ iOS / 470+ Android unfiltered voices is hostile UX.
-const ENGINE_ORDER: EngineId[] = ['phonon', 'kitten', 'kokoro', 'supertonic'];
+const ENGINE_ORDER: EngineId[] = [
+  'phonon',
+  'piper',
+  'kitten',
+  'kokoro',
+  'supertonic',
+];
 
 const engineTitle = (engineId: EngineId, l: L10n): string => {
   switch (engineId) {
@@ -69,6 +78,8 @@ const engineTitle = (engineId: EngineId, l: L10n): string => {
       return l.voiceAndSpeech.engineChipSupertonic;
     case 'phonon':
       return l.voiceAndSpeech.engineChipPhonon;
+    case 'piper':
+      return l.voiceAndSpeech.engineChipPiper;
     case 'system':
       return Platform.OS === 'ios'
         ? l.voiceAndSpeech.engineSystemTitleIos
@@ -86,6 +97,8 @@ const engineTagline = (engineId: EngineId, l: L10n): string => {
       return l.voiceAndSpeech.engineSupertonicTagline;
     case 'phonon':
       return l.voiceAndSpeech.enginePhononTagline;
+    case 'piper':
+      return l.voiceAndSpeech.enginePiperTagline;
     case 'system':
       return l.voiceAndSpeech.engineSystemTagline;
   }
@@ -101,6 +114,8 @@ const engineTierLabel = (engineId: EngineId, l: L10n): string => {
       return l.voiceAndSpeech.engineTierFastestStart;
     case 'phonon':
       return l.voiceAndSpeech.engineTierNatural;
+    case 'piper':
+      return l.voiceAndSpeech.engineTierLowLatency;
     case 'system':
       return l.voiceAndSpeech.engineSystemTier;
   }
@@ -116,6 +131,8 @@ const neuralStateFor = (engineId: NeuralEngineId): DownloadState => {
       return ttsStore.supertonicDownloadState;
     case 'phonon':
       return ttsStore.phononDownloadState;
+    case 'piper':
+      return ttsStore.piperDownloadState;
   }
 };
 
@@ -129,6 +146,8 @@ const neuralProgressFor = (engineId: NeuralEngineId): number => {
       return ttsStore.supertonicDownloadProgress;
     case 'phonon':
       return ttsStore.phononDownloadProgress;
+    case 'piper':
+      return ttsStore.piperDownloadProgress;
   }
 };
 
@@ -142,6 +161,8 @@ const neuralErrorFor = (engineId: NeuralEngineId): string | null => {
       return ttsStore.supertonicDownloadError;
     case 'phonon':
       return ttsStore.phononDownloadError;
+    case 'piper':
+      return ttsStore.piperDownloadError;
   }
 };
 
@@ -155,6 +176,8 @@ const triggerDownload = (engineId: NeuralEngineId) => {
       return ttsStore.downloadSupertonic();
     case 'phonon':
       return ttsStore.downloadPhonon();
+    case 'piper':
+      return ttsStore.downloadPiper();
   }
 };
 
@@ -168,6 +191,8 @@ const triggerRetry = (engineId: NeuralEngineId) => {
       return ttsStore.retryDownload();
     case 'phonon':
       return ttsStore.retryPhononDownload();
+    case 'piper':
+      return ttsStore.retryPiperDownload();
   }
 };
 
@@ -181,6 +206,8 @@ const triggerDelete = (engineId: NeuralEngineId) => {
       return ttsStore.deleteSupertonic();
     case 'phonon':
       return ttsStore.deletePhonon();
+    case 'piper':
+      return ttsStore.deletePiper();
   }
 };
 
@@ -189,6 +216,7 @@ const NEURAL_ESTIMATED_BYTES: Record<NeuralEngineId, number> = {
   kokoro: KOKORO_MODEL_ESTIMATED_BYTES,
   kitten: KITTEN_MODEL_ESTIMATED_BYTES,
   phonon: PHONON_MODEL_ESTIMATED_BYTES,
+  piper: PIPER_MODEL_ESTIMATED_BYTES,
 };
 
 /** True when we know there isn't enough disk space (with 20% buffer). */
@@ -212,6 +240,7 @@ const VOICES_BY_ENGINE: Record<EngineId, Voice[]> = {
   kokoro: KOKORO_VOICES,
   supertonic: SUPERTONIC_VOICES,
   phonon: PHONON_VOICES,
+  piper: PIPER_VOICES,
   system: [], // populated async via SystemEngine
 };
 
@@ -599,6 +628,7 @@ export const VoicePickerView: React.FC = observer(() => {
       {ENGINE_ORDER.filter(id => ttsStore.isEngineOffered(id)).map(
         renderEngineGroup,
       )}
+      <DelegateRow />
     </Sheet.ScrollView>
   );
 });

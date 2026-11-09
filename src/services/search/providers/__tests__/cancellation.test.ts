@@ -30,6 +30,13 @@ const reads: Array<[string, NetworkCall]> = [
 
 const calls = [...searches, ...reads];
 
+/** A healthy body for each provider's own transport (JSON, except DDG's HTML). */
+const healthyBody = (label: string) =>
+  label.startsWith('DuckDuckGo')
+    ? '<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com">Example</a>' +
+      '<a class="result__snippet">Example snippet</a>'
+    : '{"type":"search","results":[],"success":true,"data":{}}';
+
 describe('search network calls honour the caller signal', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -57,14 +64,15 @@ describe('search network calls honour the caller signal', () => {
     },
   );
 
-  it.each(calls)('%s resolves as before without a signal', async (_l, run) => {
-    global.fetch = abortableFetch({
-      body: '{"type":"search","results":[],"success":true,"data":{}}',
-    });
+  it.each(calls)(
+    '%s resolves as before without a signal',
+    async (label, run) => {
+      global.fetch = abortableFetch({body: healthyBody(label)});
 
-    await expect(run()).resolves.toBeDefined();
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-  });
+      await expect(run()).resolves.toBeDefined();
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    },
+  );
 });
 
 describe('search network calls on a 429', () => {
@@ -83,13 +91,11 @@ describe('search network calls on a 429', () => {
     jest.useRealTimers();
   });
 
-  it.each(searches)('%s retries once', async (_label, run) => {
+  it.each(searches)('%s retries once', async (label, run) => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce(rateLimited)
-      .mockResolvedValueOnce(
-        okResponse('{"type":"search","results":[],"success":true,"data":{}}'),
-      );
+      .mockResolvedValueOnce(okResponse(healthyBody(label)));
 
     const result = run();
     await jest.advanceTimersByTimeAsync(1000);

@@ -72,6 +72,7 @@ import {
   L10nContext,
 } from '../../utils';
 import {hasVideoCapability} from '../../utils/pal-capabilities';
+import {ChatSendContext} from '../../utils/chatSendContext';
 
 import {
   Message,
@@ -207,6 +208,7 @@ const PendingIndicatorView: React.FC = observer(() =>
   ) : (
     <PendingIndicator
       pendingTalentNames={chatSessionStore.agentUiState.pendingTalentNames}
+      activeToolName={chatSessionStore.agentUiState.activeToolName}
       toolCallTokenCount={chatSessionStore.toolCallTokenCount}
       isStopping={chatSessionStore.isStopping}
     />
@@ -594,6 +596,19 @@ export const ChatView = observer(
         }
       },
       [onSendPress, restoreUndone],
+    );
+
+    // Suggestion-chip send path. Reuses `wrappedOnSendPress` so chips get
+    // exactly the same draft/undo/stop handling as the composer.
+    const chatSendValue = React.useMemo(
+      () => ({
+        sendPrompt: (prompt: string) => {
+          wrappedOnSendPress({type: 'text', text: prompt}).catch(err => {
+            console.warn('[ChatView] suggestion send failed:', err);
+          });
+        },
+      }),
+      [wrappedOnSendPress],
     );
 
     const handleCancelEdit = React.useCallback(() => {
@@ -1188,225 +1203,227 @@ export const ChatView = observer(
     // ============ COMPONENT RENDER ============
     return (
       <UserContext.Provider value={user}>
-        <View
-          style={[styles.container, {backgroundColor: inputBackgroundColor}]}
-          onLayout={onLayout}>
-          {/* Header */}
-          <View style={styles.headerWrapper}>
-            <ChatHeader />
-          </View>
+        <ChatSendContext.Provider value={chatSendValue}>
+          <View
+            style={[styles.container, {backgroundColor: inputBackgroundColor}]}
+            onLayout={onLayout}>
+            {/* Header */}
+            <View style={styles.headerWrapper}>
+              <ChatHeader />
+            </View>
 
-          {/* Main chat container */}
-          <Reanimated.View style={styles.chatContainer}>
-            {customContent}
-            {renderChatList()}
+            {/* Main chat container */}
+            <Reanimated.View style={styles.chatContainer}>
+              {customContent}
+              {renderChatList()}
 
-            {/* Chat input */}
-            <Reanimated.View
-              onLayout={onLayoutChatInput}
-              style={[
-                styles.inputContainer,
-                inputContainerAnimatedStyle,
-                {backgroundColor: inputBackgroundColor},
-              ]}>
-              <BannerRow
-                messages={messages}
-                htmlPreviewCount={htmlPreviewCount}
-                canIncrease={canIncreaseContext}
-                onNewChat={() => chatSessionStore.resetActiveSession()}
-                onIncreaseContext={() => setIncreaseSheetOpen(true)}
-              />
-              {onVoiceModePress && voiceModeStore.isOpen ? (
-                <VoiceBar />
-              ) : (
-                <ChatInput
-                  {...{
-                    ...unwrap(inputProps),
-                    isStreaming,
-                    onSendPress: wrappedOnSendPress,
-                    onStopPress,
-                    chatInputHeight,
-                    inputBackgroundColor,
-                    onCancelEdit: handleCancelEdit,
-                    onPalBtnPress: () => setIsPickerVisible(!isPickerVisible),
-                    isStopVisible,
-                    isPickerVisible,
-                    sendButtonVisibilityMode,
-                    showImageUpload,
-                    isVisionEnabled,
-                    defaultImages: inputImages,
-                    onDefaultImagesChange: setInputImages,
-                    appendTranscript: composerShowsPromptText
-                      ? undefined
-                      : appendTranscript,
-                    onVoicePress:
-                      onVoiceModePress &&
-                      ((focusInput: () => void) => {
-                        Keyboard.dismiss();
-                        onVoiceModePress({
-                          openModelPicker: () => setIsPickerVisible(true),
-                          focusInput,
-                        });
-                      }),
-                    textInputProps: {
-                      ...textInputProps,
-                      ...(!composerShowsPromptText && {
-                        value: inputText,
-                        onChangeText: setInputText,
-                      }),
-                    },
-                  }}
+              {/* Chat input */}
+              <Reanimated.View
+                onLayout={onLayoutChatInput}
+                style={[
+                  styles.inputContainer,
+                  inputContainerAnimatedStyle,
+                  {backgroundColor: inputBackgroundColor},
+                ]}>
+                <BannerRow
+                  messages={messages}
+                  htmlPreviewCount={htmlPreviewCount}
+                  canIncrease={canIncreaseContext}
+                  onNewChat={() => chatSessionStore.resetActiveSession()}
+                  onIncreaseContext={() => setIncreaseSheetOpen(true)}
+                />
+                {onVoiceModePress && voiceModeStore.isOpen ? (
+                  <VoiceBar />
+                ) : (
+                  <ChatInput
+                    {...{
+                      ...unwrap(inputProps),
+                      isStreaming,
+                      onSendPress: wrappedOnSendPress,
+                      onStopPress,
+                      chatInputHeight,
+                      inputBackgroundColor,
+                      onCancelEdit: handleCancelEdit,
+                      onPalBtnPress: () => setIsPickerVisible(!isPickerVisible),
+                      isStopVisible,
+                      isPickerVisible,
+                      sendButtonVisibilityMode,
+                      showImageUpload,
+                      isVisionEnabled,
+                      defaultImages: inputImages,
+                      onDefaultImagesChange: setInputImages,
+                      appendTranscript: composerShowsPromptText
+                        ? undefined
+                        : appendTranscript,
+                      onVoicePress:
+                        onVoiceModePress &&
+                        ((focusInput: () => void) => {
+                          Keyboard.dismiss();
+                          onVoiceModePress({
+                            openModelPicker: () => setIsPickerVisible(true),
+                            focusInput,
+                          });
+                        }),
+                      textInputProps: {
+                        ...textInputProps,
+                        ...(!composerShowsPromptText && {
+                          value: inputText,
+                          onChangeText: setInputText,
+                        }),
+                      },
+                    }}
+                  />
+                )}
+              </Reanimated.View>
+
+              {/* Suggested prompts — float above the input container, share
+                its keyboard-tracking transform so they rise together but
+                render as a sibling (no shared background / rounded top). */}
+              {messages.length === 0 &&
+              !isStreaming &&
+              !voiceModeOpen &&
+              modelStore.activeModelId !== undefined &&
+              activePal?.greeting?.suggestedPrompts &&
+              activePal.greeting.suggestedPrompts.length > 0 ? (
+                <Reanimated.View
+                  pointerEvents="box-none"
+                  style={[
+                    styles.suggestedPromptsOverlay,
+                    suggestedPromptsAnimatedStyle,
+                    {bottom: chatInputHeight.height},
+                  ]}>
+                  <SuggestedPromptsRow
+                    prompts={activePal.greeting.suggestedPrompts}
+                    onSelect={prompt =>
+                      wrappedOnSendPress({type: 'text', text: prompt})
+                    }
+                  />
+                </Reanimated.View>
+              ) : null}
+
+              {/* Pal/Model picker sheet */}
+              {/* Conditionally render the sheet to avoid keyboard issues.
+            It makes the disappearing sudden, but it's better than the keyboard issue.*/}
+              {isPickerVisible && (
+                <ChatPalModelPickerSheet
+                  isVisible={isPickerVisible}
+                  onClose={() => setIsPickerVisible(false)}
+                  onModelSelect={handleModelSelect}
+                  onPalSelect={handlePalSelect}
+                  onPalSettingsSelect={onPalSettingsSelect}
+                  chatInputHeight={chatInputHeight.height}
                 />
               )}
             </Reanimated.View>
 
-            {/* Suggested prompts — float above the input container, share
-                its keyboard-tracking transform so they rise together but
-                render as a sibling (no shared background / rounded top). */}
-            {messages.length === 0 &&
-            !isStreaming &&
-            !voiceModeOpen &&
-            modelStore.activeModelId !== undefined &&
-            activePal?.greeting?.suggestedPrompts &&
-            activePal.greeting.suggestedPrompts.length > 0 ? (
-              <Reanimated.View
-                pointerEvents="box-none"
-                style={[
-                  styles.suggestedPromptsOverlay,
-                  suggestedPromptsAnimatedStyle,
-                  {bottom: chatInputHeight.height},
-                ]}>
-                <SuggestedPromptsRow
-                  prompts={activePal.greeting.suggestedPrompts}
-                  onSelect={prompt =>
-                    wrappedOnSendPress({type: 'text', text: prompt})
-                  }
-                />
-              </Reanimated.View>
+            {/* Image viewer */}
+            <ImageView
+              imageIndex={imageViewIndex}
+              images={gallery}
+              onRequestClose={handleRequestClose}
+              visible={isImageViewVisible}
+            />
+
+            {/* Context menu */}
+            <Menu
+              visible={menuVisible}
+              onDismiss={handleMenuDismiss}
+              selectable={false}
+              anchor={menuPosition}>
+              {menuItems.map(renderMenuItem)}
+            </Menu>
+
+            {/* Content report sheet */}
+            <ContentReportSheet
+              isVisible={isReportSheetVisible}
+              onClose={() => setIsReportSheetVisible(false)}
+            />
+
+            {increaseSheetOpen && activeModel && currentNCtx !== undefined ? (
+              <IncreaseContextSheet
+                isVisible={increaseSheetOpen}
+                model={activeModel}
+                projectionModel={projectionModel}
+                currentNCtx={currentNCtx}
+                onClose={() => setIncreaseSheetOpen(false)}
+                onNewChat={() => {
+                  chatSessionStore.resetActiveSession();
+                  setIncreaseSheetOpen(false);
+                }}
+                onReloadStart={() => {
+                  // Single advisory surface: dismiss the pal-load hint in the
+                  // same handler so no frame shows two snackbars at once.
+                  palLoadHint.dismiss();
+                  setReloadSnackbar({
+                    message: l10n.chat.increaseContextReloading,
+                    indefinite: true,
+                  });
+                }}
+                onReloadResult={(success, target) =>
+                  setReloadSnackbar({
+                    message: success
+                      ? t(l10n.chat.increaseContextSuccess, {target})
+                      : l10n.chat.increaseContextFailure,
+                    indefinite: false,
+                  })
+                }
+              />
             ) : null}
 
-            {/* Pal/Model picker sheet */}
-            {/* Conditionally render the sheet to avoid keyboard issues.
-            It makes the disappearing sudden, but it's better than the keyboard issue.*/}
-            {isPickerVisible && (
-              <ChatPalModelPickerSheet
-                isVisible={isPickerVisible}
-                onClose={() => setIsPickerVisible(false)}
-                onModelSelect={handleModelSelect}
-                onPalSelect={handlePalSelect}
-                onPalSettingsSelect={onPalSettingsSelect}
-                chatInputHeight={chatInputHeight.height}
-              />
-            )}
-          </Reanimated.View>
-
-          {/* Image viewer */}
-          <ImageView
-            imageIndex={imageViewIndex}
-            images={gallery}
-            onRequestClose={handleRequestClose}
-            visible={isImageViewVisible}
-          />
-
-          {/* Context menu */}
-          <Menu
-            visible={menuVisible}
-            onDismiss={handleMenuDismiss}
-            selectable={false}
-            anchor={menuPosition}>
-            {menuItems.map(renderMenuItem)}
-          </Menu>
-
-          {/* Content report sheet */}
-          <ContentReportSheet
-            isVisible={isReportSheetVisible}
-            onClose={() => setIsReportSheetVisible(false)}
-          />
-
-          {increaseSheetOpen && activeModel && currentNCtx !== undefined ? (
-            <IncreaseContextSheet
-              isVisible={increaseSheetOpen}
-              model={activeModel}
-              projectionModel={projectionModel}
-              currentNCtx={currentNCtx}
-              onClose={() => setIncreaseSheetOpen(false)}
-              onNewChat={() => {
-                chatSessionStore.resetActiveSession();
-                setIncreaseSheetOpen(false);
-              }}
-              onReloadStart={() => {
-                // Single advisory surface: dismiss the pal-load hint in the
-                // same handler so no frame shows two snackbars at once.
-                palLoadHint.dismiss();
-                setReloadSnackbar({
-                  message: l10n.chat.increaseContextReloading,
-                  indefinite: true,
-                });
-              }}
-              onReloadResult={(success, target) =>
-                setReloadSnackbar({
-                  message: success
-                    ? t(l10n.chat.increaseContextSuccess, {target})
-                    : l10n.chat.increaseContextFailure,
-                  indefinite: false,
-                })
+            <Snackbar
+              visible={isFocused && reloadSnackbar !== null}
+              onDismiss={() => setReloadSnackbar(null)}
+              duration={
+                // RNP treats POSITIVE_INFINITY as "no auto-hide timer"; the
+                // reloading snackbar stays until the result replaces it.
+                reloadSnackbar?.indefinite ? Number.POSITIVE_INFINITY : 4000
               }
-            />
-          ) : null}
+              testID="context-reload-snackbar">
+              {reloadSnackbar?.message ?? ''}
+            </Snackbar>
 
-          <Snackbar
-            visible={isFocused && reloadSnackbar !== null}
-            onDismiss={() => setReloadSnackbar(null)}
-            duration={
-              // RNP treats POSITIVE_INFINITY as "no auto-hide timer"; the
-              // reloading snackbar stays until the result replaces it.
-              reloadSnackbar?.indefinite ? Number.POSITIVE_INFINITY : 4000
-            }
-            testID="context-reload-snackbar">
-            {reloadSnackbar?.message ?? ''}
-          </Snackbar>
+            <Snackbar
+              visible={isFocused && palLoadHint.hintVisible && !reloadSnackbar}
+              onDismiss={palLoadHint.dismiss}
+              duration={6000}
+              action={{
+                label: l10n.chat.contextMoreRoom,
+                onPress: () => {
+                  palLoadHint.dismiss();
+                  setIncreaseSheetOpen(true);
+                },
+              }}
+              testID="pal-load-hint-snackbar">
+              {l10n.chat.palLoadHint}
+            </Snackbar>
 
-          <Snackbar
-            visible={isFocused && palLoadHint.hintVisible && !reloadSnackbar}
-            onDismiss={palLoadHint.dismiss}
-            duration={6000}
-            action={{
-              label: l10n.chat.contextMoreRoom,
-              onPress: () => {
-                palLoadHint.dismiss();
-                setIncreaseSheetOpen(true);
-              },
-            }}
-            testID="pal-load-hint-snackbar">
-            {l10n.chat.palLoadHint}
-          </Snackbar>
-
-          <Snackbar
-            visible={
-              isFocused &&
-              asrStore.lastError !== null &&
-              !reloadSnackbar &&
-              !palLoadHint.hintVisible
-            }
-            onDismiss={() => asrStore.resetCapture()}
-            duration={4000}
-            action={
-              asrStore.lastError === 'permission_blocked'
-                ? {
-                    label: l10n.voiceInput.openSettingsLabel,
-                    onPress: () => {
-                      asrStore.resetCapture();
-                      openMicSettings();
-                    },
-                  }
-                : undefined
-            }
-            testID="asr-error-snackbar">
-            {asrStore.lastError
-              ? asrErrorMessage(asrStore.lastError, l10n)
-              : ''}
-          </Snackbar>
-        </View>
+            <Snackbar
+              visible={
+                isFocused &&
+                asrStore.lastError !== null &&
+                !reloadSnackbar &&
+                !palLoadHint.hintVisible
+              }
+              onDismiss={() => asrStore.resetCapture()}
+              duration={4000}
+              action={
+                asrStore.lastError === 'permission_blocked'
+                  ? {
+                      label: l10n.voiceInput.openSettingsLabel,
+                      onPress: () => {
+                        asrStore.resetCapture();
+                        openMicSettings();
+                      },
+                    }
+                  : undefined
+              }
+              testID="asr-error-snackbar">
+              {asrStore.lastError
+                ? asrErrorMessage(asrStore.lastError, l10n)
+                : ''}
+            </Snackbar>
+          </View>
+        </ChatSendContext.Provider>
       </UserContext.Provider>
     );
   },

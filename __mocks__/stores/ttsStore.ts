@@ -62,6 +62,7 @@ class MockTTSStore {
   setVoiceOutputActive: jest.Mock;
   setUserTTSOverride: jest.Mock;
   setCurrentVoice: jest.Mock;
+  prewarm: jest.Mock;
   setSupertonicSteps: jest.Mock;
   setSupertonicLanguage: jest.Mock;
   openSetupSheet: jest.Mock;
@@ -98,6 +99,7 @@ class MockTTSStore {
       setVoiceOutputActive: false,
       setUserTTSOverride: false,
       setCurrentVoice: false,
+      prewarm: false,
       setSupertonicSteps: false,
       setSupertonicLanguage: false,
       openSetupSheet: false,
@@ -132,6 +134,7 @@ class MockTTSStore {
     });
     this.setUserTTSOverride = jest.fn();
     this.setCurrentVoice = jest.fn();
+    this.prewarm = jest.fn().mockResolvedValue(undefined);
     this.setSupertonicSteps = jest.fn();
     this.setSupertonicLanguage = jest.fn();
     this.openSetupSheet = jest.fn();

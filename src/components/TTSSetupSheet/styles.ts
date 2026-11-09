@@ -273,4 +273,69 @@ export const createStyles = (theme: Theme) =>
       fontSize: 12,
       marginTop: 2,
     },
+
+    // Compute provider (delegate) row (used by DelegateRow)
+    delegateCard: {
+      marginTop: 4,
+      marginBottom: 20,
+      padding: 14,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.outlineVariant,
+      backgroundColor: theme.colors.surface,
+    },
+    delegateTitle: {
+      color: theme.colors.onSurface,
+      fontSize: 16,
+      fontWeight: '700',
+      letterSpacing: -0.2,
+    },
+    delegateDescription: {
+      color: theme.colors.onSurfaceVariant,
+      fontSize: 12,
+      lineHeight: 16,
+      marginTop: 2,
+      marginBottom: 10,
+    },
+    delegateOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      minHeight: 52,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      marginBottom: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.outlineVariant,
+      backgroundColor: theme.colors.surfaceContainerLow,
+    },
+    delegateOptionSelected: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surfaceContainerHigh,
+    },
+    delegateOptionDisabled: {
+      opacity: 0.5,
+    },
+    delegateOptionText: {
+      flex: 1,
+      paddingRight: 10,
+    },
+    delegateOptionLabel: {
+      color: theme.colors.onSurface,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    delegateOptionDescription: {
+      color: theme.colors.onSurfaceVariant,
+      fontSize: 12,
+      lineHeight: 16,
+      marginTop: 2,
+    },
+    delegateDisabledNote: {
+      color: theme.colors.onSurfaceVariant,
+      fontSize: 11,
+      fontStyle: 'italic',
+      marginTop: 2,
+    },
   });

@@ -19,10 +19,20 @@ describe('ChatSessionStore - Pal Settings', () => {
   });
 
   describe('resolveCompletionSettings', () => {
-    it('should return system defaults when no other settings are available', async () => {
-      const result = await chatSessionStore.resolveCompletionSettings();
+    it('should return system defaults plus the default talents when no other settings are available', async () => {
+      const {tools, ...base} =
+        await chatSessionStore.resolveCompletionSettings();
 
-      expect(result).toEqual(defaultCompletionSettings);
+      expect(base).toEqual(defaultCompletionSettings);
+      // A stock chat has no Pal, but still gets the built-in talents — otherwise
+      // the model has no tools and only claims to have searched the web.
+      const names = ((tools ?? []) as any[]).map(t => t?.function?.name).sort();
+      expect(names).toEqual([
+        'calculate',
+        'datetime',
+        'read_url',
+        'web_search',
+      ]);
     });
 
     it('should apply global settings over system defaults', async () => {

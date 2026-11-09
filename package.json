@@ -1,6 +1,6 @@
 {
-  "name": "PocketPal",
-  "version": "1.22.0",
+  "name": "poketpals-ai",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "prepare": "husky",
@@ -21,7 +21,8 @@
     "typecheck": "tsc --noEmit",
     "l10n:validate": "node scripts/validate-l10n.js",
     "verify:fonts": "node scripts/verify-fonts.js",
-    "icons:generate": "node scripts/generate-app-icons.js",
+    "icons:generate": "bash scripts/render-app-icons.sh",
+    "legal:sync": "node scripts/sync-legal-docs.js",
     "lint:fix": "eslint \"**/*.{js,ts,tsx}\" --fix",
     "format": "prettier --write \"**/*.{js,ts,tsx,json,md}\"",
     "start": "react-native start",

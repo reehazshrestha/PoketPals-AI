@@ -705,7 +705,16 @@ describe('chatSessionStore', () => {
       expect(chatSessionRepository.createSession).toHaveBeenCalledWith(
         expect.any(String),
         [mockMessage],
-        originalSession.completionSettings,
+        expect.objectContaining({
+          ...originalSession.completionSettings,
+          // Resolved settings always carry the default talents, with or without
+          // a Pal, so tool availability can't disappear between sessions.
+          tools: expect.arrayContaining([
+            expect.objectContaining({
+              function: expect.objectContaining({name: 'web_search'}),
+            }),
+          ]),
+        }),
         undefined,
         'pal',
       );

@@ -46,13 +46,11 @@ import {
   SearchProviderKeySheet,
   InputSlider,
 } from '../../components';
-import {AuthSheet} from '../../components/PalsHub';
-import {AccountCard} from './AccountCard';
-import {PurchasesCard} from './PurchasesCard';
 
 import {useTheme} from '../../hooks';
 
 import {createStyles} from './styles';
+import {AccentPaletteRow} from './AccentPaletteRow';
 import {CacheTypeMenuRow} from './CacheTypeMenuRow';
 import {useMenuAnchor} from './useMenuAnchor';
 
@@ -63,10 +61,8 @@ import {
   ttsStore,
   asrStore,
   searchProviderStore,
-  purchaseStore,
   voiceModeStore,
 } from '../../store';
-import {authService} from '../../services';
 import type {SearchProviderId} from '../../services/search/types';
 import {
   ASR_DISK_HEADROOM_FACTOR,
@@ -76,6 +72,7 @@ import {
   type AsrTier,
 } from '../../services/asr';
 
+import {PIPER_VOICES} from '../../services/tts';
 import {CacheType, ModelType} from '../../utils/types';
 import {
   L10nContext,
@@ -121,13 +118,56 @@ export const SettingsScreen: React.FC = observer(() => {
   const draftModelMenu = useMenuAnchor();
   const searchProviderMenu = useMenuAnchor();
   const [showHfTokenDialog, setShowHfTokenDialog] = useState(false);
-  const [showAuthSheet, setShowAuthSheet] = useState(false);
   const [showSearchKeySheet, setShowSearchKeySheet] = useState(false);
+  const [lowLatencyApplying, setLowLatencyApplying] = useState(false);
   const [gpuSupported, setGpuSupported] = useState(false);
   const [deviceOptions, setDeviceOptions] = useState<DeviceOption[]>([]);
   const [currentBackend, setCurrentBackend] = useState<
     'metal' | 'opencl' | 'hexagon' | 'cpu' | 'blas'
   >(Platform.OS === 'ios' ? 'metal' : 'cpu');
+  /**
+   * Enabling applies the Qwen2.5 0.5B runtime profile and selects the Piper
+   * voice. Disabling only clears the preference — the user may keep the
+   * low-latency model or switch back through the normal model/voice pickers.
+   */
+  const handleLowLatencyToggle = async (enabled: boolean) => {
+    if (!enabled) {
+      uiStore.setLowLatencyMode(false);
+      return;
+    }
+    setLowLatencyApplying(true);
+    const previous = uiStore.lowLatencyMode;
+    // Set the preference before starting the download: Android's download
+    // call returns immediately, and the model-complete hook checks this flag
+    // before auto-selecting Qwen.
+    uiStore.setLowLatencyMode(true);
+    try {
+      const model = await modelStore.activateLowLatencyModel();
+      if (!model) {
+        throw new Error('Qwen2.5 0.5B is not available');
+      }
+
+      if (ttsStore.isTTSAvailable) {
+        if (ttsStore.piperDownloadState !== 'ready') {
+          await ttsStore.downloadPiper();
+        }
+        const piperVoice = PIPER_VOICES[0];
+        if (ttsStore.piperDownloadState === 'ready' && piperVoice) {
+          ttsStore.setCurrentVoice(piperVoice);
+        }
+      }
+    } catch (err) {
+      console.warn('[SettingsScreen] Low Latency Mode failed:', err);
+      uiStore.setLowLatencyMode(previous);
+      Alert.alert(
+        l10n.settings.lowLatencyMode,
+        l10n.settings.lowLatencyModeFailed,
+      );
+    } finally {
+      setLowLatencyApplying(false);
+    }
+  };
+
   const debouncedUpdateStore = useRef(
     debounce((value: number) => {
       modelStore.setNContext(value);
@@ -1042,6 +1082,35 @@ export const SettingsScreen: React.FC = observer(() => {
             </Card.Content>
           </Card>
 
+          {/* Low Latency Mode */}
+          <Card elevation={0} style={styles.card} testID="low-latency-card">
+            <Card.Title title={l10n.settings.lowLatencyMode} />
+            <Card.Content>
+              <View style={styles.switchContainer}>
+                <View style={styles.textContainer}>
+                  <Text variant="labelSmall" style={styles.textDescription}>
+                    {lowLatencyApplying
+                      ? l10n.settings.lowLatencyModeApplying
+                      : l10n.settings.lowLatencyModeDescription}
+                  </Text>
+                </View>
+                <Switch
+                  testID="low-latency-mode-switch"
+                  value={uiStore.lowLatencyMode}
+                  disabled={lowLatencyApplying}
+                  onValueChange={value => {
+                    handleLowLatencyToggle(value).catch(err => {
+                      console.warn(
+                        '[SettingsScreen] Low Latency toggle failed:',
+                        err,
+                      );
+                    });
+                  }}
+                />
+              </View>
+            </Card.Content>
+          </Card>
+
           {/* UI Settings */}
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.appSettings} />
@@ -1089,6 +1158,10 @@ export const SettingsScreen: React.FC = observer(() => {
                     }
                   />
                 </View>
+                <Divider />
+
+                {/* Accent palette */}
+                <AccentPaletteRow />
                 <Divider />
 
                 {/* Text-to-speech availability toggle */}
@@ -1495,6 +1568,14 @@ export const SettingsScreen: React.FC = observer(() => {
                                 activeSearchProviderId,
                             })}
                     </Text>
+                    {activeSearchProviderId === 'duckduckgo' && (
+                      <Text
+                        variant="labelSmall"
+                        style={styles.textDescription}
+                        testID="search-provider-duckduckgo-hint">
+                        {l10n.settings.internetSearch.duckduckgoHint}
+                      </Text>
+                    )}
                     {!searchHasConsent && (
                       <Text variant="labelSmall" style={styles.textDescription}>
                         {l10n.settings.internetSearch.consentRequired}
@@ -1684,10 +1765,6 @@ export const SettingsScreen: React.FC = observer(() => {
             </Card>
           )}
 
-          <PurchasesCard onSignInPress={() => setShowAuthSheet(true)} />
-
-          <AccountCard />
-
           {/* Export Options */}
           <Card elevation={0} style={styles.card}>
             <Card.Title title={l10n.settings.exportOptions} />
@@ -1743,17 +1820,6 @@ export const SettingsScreen: React.FC = observer(() => {
         providerLabel={activeSearchProvider?.label ?? activeSearchProviderId}
         onDismiss={() => setShowSearchKeySheet(false)}
       />
-      {showAuthSheet && (
-        <AuthSheet
-          isVisible={showAuthSheet}
-          onClose={() => {
-            setShowAuthSheet(false);
-            if (!authService.isAuthenticated) {
-              purchaseStore.cancelLinkRequest();
-            }
-          }}
-        />
-      )}
     </SafeAreaView>
   );
 });

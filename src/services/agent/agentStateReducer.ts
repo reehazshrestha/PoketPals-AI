@@ -21,6 +21,7 @@ export function agentStateReducer(
         status: 'prefill',
         pendingTalentNames: [],
         hitMaxTurns: false,
+        activeToolName: null,
       };
     case 'step_started':
       // Both initial and follow-up steps route through `prefill` so the
@@ -29,6 +30,7 @@ export function agentStateReducer(
         ...state,
         status: 'prefill',
         pendingTalentNames: [],
+        activeToolName: null,
       };
     case 'token': {
       const incomingToolCalls = event.delta.toolCalls;
@@ -78,22 +80,29 @@ export function agentStateReducer(
         ...state,
         status: 'executing_tool',
         pendingTalentNames: [],
+        activeToolName: event.call.function?.name ?? null,
       };
     case 'tool_call_finished':
-    case 'step_finished':
       // Outcomes accumulate on the step; status flips on the next event.
       return state;
+    case 'step_finished':
+      // The step is done, so no tool is still running for the indicator.
+      return state.activeToolName == null
+        ? state
+        : {...state, activeToolName: null};
     case 'run_finished':
       return {
         status: 'done',
         pendingTalentNames: [],
         hitMaxTurns: !!event.result.hitMaxTurns,
+        activeToolName: null,
       };
     case 'run_failed':
       return {
         ...state,
         status: 'failed',
         pendingTalentNames: [],
+        activeToolName: null,
       };
     default: {
       const _exhaustive: never = event;

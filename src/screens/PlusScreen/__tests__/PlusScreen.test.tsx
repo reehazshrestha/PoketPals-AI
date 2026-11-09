@@ -645,7 +645,7 @@ describe('PlusScreen', () => {
       fireEvent.press(getByTestId('plus-open-source'));
 
       expect(openURL).toHaveBeenCalledWith(REPO_URL);
-      expect(REPO_URL).toBe('https://github.com/a-ghorbani/pocketpal-ai');
+      expect(REPO_URL).toBe('https://github.com/reehazshrestha/PoketPals-AI');
     });
 
     it('says when no Plus purchase was found', async () => {

@@ -45,6 +45,22 @@ function createSearchAccess(): SearchAccess {
   };
 }
 
+/**
+ * Talents every chat gets when its Pal doesn't declare its own set.
+ *
+ * Without this, a Pal with an empty `pact.talents` (every built-in Pal, and
+ * anything a user installs without tools) exposes no tool schemas at all, so
+ * "search the web for ..." silently turns into the model guessing from memory.
+ * Web search and page reading are the point of the free search setup, so they
+ * are on by default; the engines still refuse when the user hasn't consented.
+ */
+export const DEFAULT_TALENT_NAMES = [
+  'web_search',
+  'read_url',
+  'calculate',
+  'datetime',
+] as const;
+
 let registered = false;
 
 /**

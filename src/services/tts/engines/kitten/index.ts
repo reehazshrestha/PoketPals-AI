@@ -21,6 +21,7 @@ import type {
   Voice,
   VoiceFileSource,
 } from '../../types';
+import {executionProvidersFromPreference} from '../../executionProviders';
 import {KITTEN_VOICES} from './voices';
 
 export type KittenProgressCallback = (progress: number) => void;
@@ -32,7 +33,15 @@ export type KittenProgressCallback = (progress: number) => void;
  * the voices manifest, and the IPA dict. On any failure the entire
  * `tts/kitten/` directory is removed so a retry starts clean.
  *
- * CPU-only execution is forced to match the other neural engines.
+ * Execution providers default to the platform default. A persisted user
+ * preference (`ttsExecutionProviders`) wins when set; when it is set to
+ * CPU-only on Android, NNAPI is omitted because the ORT RN bundle shipped
+ * here does not expose NNAPI beyond xnnpack/cpu.
+ *
+ * Note: the shipped ORT RN bundle does not expose NNAPI, so NNAPI is
+ * best-effort-mapped to xnnpack in `executionProvidersFromPreference`.
+ * This is intentionally coarse and only affects the on-device TTS init
+ * path; it does NOT affect streaming or fallback behavior.
  */
 export class KittenEngine implements NeuralEngine {
   readonly id = 'kitten' as const;
@@ -167,7 +176,7 @@ export class KittenEngine implements NeuralEngine {
       modelPath: `file://${modelDir}/kitten.onnx`,
       voicesPath: `file://${modelDir}/voices-manifest.json`,
       dictPath: `file://${modelDir}/${TTS_DICT_FILENAME}`,
-      executionProviders: ['cpu'],
+      executionProviders: executionProvidersFromPreference(),
       maxChunkSize: 200,
       silentMode: 'obey',
       ducking: true,

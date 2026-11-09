@@ -34,6 +34,16 @@ export class LocalCompletionEngine implements CompletionEngine {
           }
         : undefined,
     );
+    const jinja = ((this.context as any).model ?? {})?.chatTemplates?.jinja;
+    console.log(
+      '[diag] jinja caps',
+      JSON.stringify({
+        defaultTools: !!jinja?.defaultCaps?.tools,
+        defaultToolCalls: !!jinja?.defaultCaps?.toolCalls,
+        toolUse: !!jinja?.toolUse,
+        toolUseCaps: !!jinja?.toolUseCaps,
+      }),
+    );
     return {
       text: result.text,
       content: result.content,

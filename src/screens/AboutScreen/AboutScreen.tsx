@@ -6,6 +6,7 @@ import {
   Alert,
   Linking,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 
 import DeviceInfo from 'react-native-device-info';
@@ -15,21 +16,22 @@ import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {BuildInfo} from 'llama.rn';
 
 import {submitFeedback} from '../../api/feedback';
+import {
+  OPEN_SOURCE_NOTICES,
+  PRIVACY_POLICY,
+  TERMS_OF_SERVICE,
+} from '../../assets/legal/legalDocs';
 import phononNotices from '../../assets/licenses/phononThirdPartyNotices.json';
-import {REPO_URL} from '../../config/urls';
+import {PROFILE} from '../../config/profile';
 
-import {CopyIcon, GithubIcon, ChevronRightIcon} from '../../assets/icons';
+import {CopyIcon, ChevronRightIcon} from '../../assets/icons';
 
-import {Sheet, TextInput} from '../../components';
+import {MarkdownView, Sheet, TextInput} from '../../components';
 import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 import {L10nContext} from '../../utils';
 import {uiStore} from '../../store';
 import {reflowNotice} from './reflowNotice';
-
-const GithubButtonIcon = ({color}: {color: string}) => (
-  <GithubIcon stroke={color} />
-);
 
 const ChevronRightButtonIcon = ({color}: {color: string}) => (
   <ChevronRightIcon stroke={color} />
@@ -38,10 +40,13 @@ const ChevronRightButtonIcon = ({color}: {color: string}) => (
 export const AboutScreen: React.FC = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const {width} = useWindowDimensions();
   const styles = createStyles(theme, insets);
+  const legalWidth = width - theme.spacing.default * 2;
   const l10n = useContext(L10nContext);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
+  const [legalDoc, setLegalDoc] = useState<'privacy' | 'terms' | null>(null);
   const noticeSections = useMemo(() => phononNotices.map(reflowNotice), []);
   const [legalItemTops, setLegalItemTops] = useState<Record<number, number>>(
     {},
@@ -57,14 +62,16 @@ export const AboutScreen: React.FC = () => {
     {
       id: 'privacy',
       label: l10n.about.privacyPolicy,
-      role: 'link',
-      onPress: () => Linking.openURL('https://pocketpal.dev/privacy-policy'),
+      role: 'button',
+      onPress: () => setLegalDoc('privacy'),
+      testID: 'about-privacy-policy',
     },
     {
       id: 'terms',
       label: l10n.about.termsOfService,
-      role: 'link',
-      onPress: () => Linking.openURL('https://pocketpal.dev/terms'),
+      role: 'button',
+      onPress: () => setLegalDoc('terms'),
+      testID: 'about-terms-of-service',
     },
     {
       id: 'notices',
@@ -141,7 +148,7 @@ export const AboutScreen: React.FC = () => {
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <Text variant="titleLarge" style={styles.title}>
-                PocketPal AI
+                PoketPals AI
               </Text>
               <Text variant="bodyMedium" style={styles.description}>
                 {l10n.about.description}
@@ -174,19 +181,20 @@ export const AboutScreen: React.FC = () => {
             </Text>
             <Button
               mode="outlined"
-              onPress={() => Linking.openURL(REPO_URL)}
-              style={styles.actionButton}
-              icon={GithubButtonIcon}>
-              {l10n.about.githubButton}
-            </Button>
-            <Text style={styles.orText}>{l10n.about.orBy}</Text>
-            <Button
-              mode="outlined"
               style={styles.actionButton}
               contentStyle={styles.feedbackButtonContent}
               icon={ChevronRightButtonIcon}
               onPress={() => setShowFeedback(true)}>
               {l10n.feedback.shareThoughtsButton}
+            </Button>
+            <Button
+              mode="outlined"
+              style={styles.actionButton}
+              contentStyle={styles.feedbackButtonContent}
+              icon={ChevronRightButtonIcon}
+              testID="about-github"
+              onPress={() => Linking.openURL(PROFILE.github)}>
+              {l10n.about.githubButton}
             </Button>
           </View>
 
@@ -330,6 +338,27 @@ export const AboutScreen: React.FC = () => {
       </Sheet>
 
       <Sheet
+        title={
+          legalDoc === 'terms'
+            ? l10n.about.termsOfService
+            : l10n.about.privacyPolicy
+        }
+        isVisible={legalDoc !== null}
+        displayFullHeight
+        onClose={() => setLegalDoc(null)}>
+        <Sheet.ScrollView
+          contentContainerStyle={styles.noticesContent}
+          testID="about-legal-sheet">
+          <MarkdownView
+            markdownText={
+              legalDoc === 'terms' ? TERMS_OF_SERVICE : PRIVACY_POLICY
+            }
+            maxMessageWidth={legalWidth}
+          />
+        </Sheet.ScrollView>
+      </Sheet>
+
+      <Sheet
         title={l10n.about.openSourceNotices}
         isVisible={showNotices}
         displayFullHeight
@@ -337,6 +366,10 @@ export const AboutScreen: React.FC = () => {
         <Sheet.ScrollView
           contentContainerStyle={styles.noticesContent}
           testID="about-open-source-notices-sheet">
+          <MarkdownView
+            markdownText={OPEN_SOURCE_NOTICES}
+            maxMessageWidth={legalWidth}
+          />
           <Text style={styles.noticesCredit}>
             {l10n.about.phononNoticesCredit}
           </Text>

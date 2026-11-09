@@ -20,6 +20,7 @@ import {useTheme} from '../../hooks';
 
 import {styles} from './styles';
 import {MarkdownView} from '../MarkdownView';
+import {SuggestionChips} from '../SuggestionChips';
 
 import {AgentStep, MessageType} from '../../utils/types';
 import {
@@ -27,6 +28,8 @@ import {
   getUserName,
   UserContext,
 } from '../../utils';
+import {parseAssistantSuggestions} from '../../utils/assistantSuggestions';
+import {ChatSendContext} from '../../utils/chatSendContext';
 import {visibleStepContent} from '../../utils/chat';
 
 export interface TextMessageTopLevelProps {
@@ -82,6 +85,21 @@ export const TextMessage = ({
       : '';
   const theme = useTheme();
   const user = React.useContext(UserContext);
+  const chatSend = React.useContext(ChatSendContext);
+
+  // Assistant replies may end with a structured follow-up block. Strip it
+  // from the rendered text and surface it as tappable chips instead. User
+  // messages never carry one, so they render verbatim.
+  const isAssistantAuthor =
+    user?.id !== undefined && message.author?.id !== user.id;
+  const {text: assistantText, suggestions} = React.useMemo(
+    () =>
+      isAssistantAuthor
+        ? parseAssistantSuggestions(visibleText)
+        : {text: visibleText, suggestions: [] as string[]},
+    [isAssistantAuthor, visibleText],
+  );
+  const renderedText = isAssistantAuthor ? assistantText : visibleText;
   const [previewData, setPreviewData] = React.useState(
     'previewData' in message ? message.previewData : undefined,
   );
@@ -236,8 +254,8 @@ export const TextMessage = ({
     !step &&
     usePreviewData &&
     !!onPreviewDataFetched &&
-    visibleText.length > 0 &&
-    REGEX_LINK.test(visibleText.toLowerCase());
+    renderedText.length > 0 &&
+    REGEX_LINK.test(renderedText.toLowerCase());
 
   return (
     <>
@@ -254,7 +272,7 @@ export const TextMessage = ({
           renderHeader={renderPreviewHeader}
           renderText={renderPreviewText}
           renderTitle={renderPreviewTitle}
-          text={visibleText}
+          text={renderedText}
           textContainerStyle={textContainer}
           touchableWithoutFeedbackProps={{
             accessibilityRole: undefined,
@@ -275,10 +293,17 @@ export const TextMessage = ({
           {!step && renderImages()}
 
           <MarkdownView
-            markdownText={visibleText.trim()}
+            markdownText={renderedText.trim()}
             maxMessageWidth={messageWidth}
             selectable={false}
           />
+
+          {suggestions.length > 0 && chatSend ? (
+            <SuggestionChips
+              suggestions={suggestions}
+              onSelect={chatSend.sendPrompt}
+            />
+          ) : null}
         </View>
       )}
 

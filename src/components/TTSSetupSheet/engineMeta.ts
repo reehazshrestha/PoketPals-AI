@@ -54,6 +54,14 @@ export const ENGINE_META: Record<EngineId, EngineMeta> = {
     gradientFrom: 'rgba(30, 77, 246, 0.14)',
     gradientTo: 'rgba(30, 77, 246, 0.02)',
   },
+  piper: {
+    sizeMb: 66,
+    ramMb: 300,
+    voices: 1,
+    accent: '#2B7CD3',
+    gradientFrom: 'rgba(43, 124, 211, 0.14)',
+    gradientTo: 'rgba(43, 124, 211, 0.02)',
+  },
   phonon: {
     sizeMb: Platform.OS === 'ios' ? 164 : 64,
     ramMb: 300,

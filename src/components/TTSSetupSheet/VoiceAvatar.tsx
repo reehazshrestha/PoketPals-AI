@@ -8,6 +8,7 @@ const ENGINE_STOPS: Record<EngineId, [string, string, string]> = {
   kokoro: ['#C0BAEF', '#6F5CD6', '#3A2D8A'],
   supertonic: ['#A4C5FF', '#1E4DF6', '#0B2A8C'],
   phonon: ['#B5EDE5', '#0E9F8E', '#08695E'],
+  piper: ['#B8DAFF', '#2B7CD3', '#164A80'],
   system: ['#D7DCE3', '#7B8896', '#3D4651'],
 };
 

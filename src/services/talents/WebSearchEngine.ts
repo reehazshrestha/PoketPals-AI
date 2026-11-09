@@ -8,18 +8,11 @@ import {
 import type {SearchAccess} from './searchAccess';
 import {SEARCH_NOT_SET_UP_MESSAGE} from './searchAccess';
 import type {SearchHit} from '../search/types';
-import {
-  budgetHits,
-  cacheKey,
-  getCachedHits,
-  setCachedHits,
-} from '../search/searchBudget';
+import {budgetHits, getCachedHits, setCachedHits} from '../search/searchBudget';
 import {wrapUntrusted} from './untrustedContent';
 import {allowReadUrls} from './readUrlAllowlist';
 
 const PER_SNIPPET_CHARS = 280;
-
-const inFlight = new Map<string, Promise<SearchHit[]>>();
 
 const formatHit = (hit: SearchHit): string => {
   const date = hit.publishedAt ? ` *(${hit.publishedAt})*` : '';
@@ -77,21 +70,8 @@ export class WebSearchEngine implements TalentEngine {
     let hits: SearchHit[];
     try {
       const cached = getCachedHits(provider.id, query, maxResults);
-      const key = cacheKey(provider.id, query, maxResults);
-      const shared = inFlight.get(key);
-      if (cached) {
-        hits = cached;
-      } else if (shared) {
-        hits = await shared;
-      } else {
-        const request = provider.search(query, {maxResults}, ctx?.signal);
-        inFlight.set(key, request);
-        try {
-          hits = await request;
-        } finally {
-          inFlight.delete(key);
-        }
-      }
+      hits =
+        cached ?? (await provider.search(query, {maxResults}, ctx?.signal));
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e);
       return {

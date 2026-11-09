@@ -10,7 +10,13 @@ import type {
  * rest of the app doesn't touch that package directly.
  */
 
-export type EngineId = 'kitten' | 'kokoro' | 'supertonic' | 'phonon' | 'system';
+export type EngineId =
+  | 'kitten'
+  | 'kokoro'
+  | 'supertonic'
+  | 'phonon'
+  | 'piper'
+  | 'system';
 
 /** Engines whose model files the app downloads and manages. */
 export type NeuralEngineId = Exclude<EngineId, 'system'>;
@@ -102,6 +108,12 @@ export interface Engine {
   ): StreamingHandle;
   /** Stop any in-flight playback. Safe to call when idle. */
   stop(): Promise<void>;
+  /**
+   * Free engine-specific resources when the runtime switches away. Optional:
+   * engines backed by the shared native Speech runtime are released through
+   * `Speech.release()` and need nothing here.
+   */
+  release?(): Promise<void>;
 }
 
 /** A voice's own file outside the engine's core files, and where it comes from. */

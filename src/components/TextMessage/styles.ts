@@ -36,13 +36,14 @@ export const styles = ({
       ...(user?.id === message.author.id
         ? theme.fonts.sentMessageBodyTextStyle
         : theme.fonts.receivedMessageBodyTextStyle),
+      letterSpacing: 0.4,
+      lineHeight: 23,
     },
     textContainer: {
-      marginHorizontal:
-        user?.id === message.author.id
-          ? theme.insets.messageInsetsHorizontal
-          : 0,
-      marginVertical: theme.insets.messageInsetsVertical,
+      // Uniform bubble padding for user and assistant rows. Padding (rather
+      // than margin) keeps the touch target inside the bubble background.
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
     imageContainer: {
       marginBottom: 8,

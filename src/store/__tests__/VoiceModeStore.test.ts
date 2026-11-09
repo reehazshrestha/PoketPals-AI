@@ -33,7 +33,7 @@ describe('VoiceModeStore', () => {
   it.each([
     ['android', 'flagship', true],
     ['android', 'high', true],
-    ['android', 'mid', false],
+    ['android', 'mid', true],
     ['android', 'low', false],
     ['ios', 'flagship', true],
     ['ios', 'high', true],
@@ -83,8 +83,9 @@ describe('VoiceModeStore', () => {
     Platform.OS = platform;
   });
 
-  it('is locked by default', () => {
-    expect(voiceModeStore.isUnlocked).toBe(false);
+  it('is unlocked by default (hands-off is free)', () => {
+    expect(mockPurchaseStore.plusUnlocked).toBe(false);
+    expect(voiceModeStore.isUnlocked).toBe(true);
   });
 
   it('the dev override unlocks the default source', () => {
@@ -102,7 +103,7 @@ describe('VoiceModeStore', () => {
     expect(source.openPaywall).toHaveBeenCalledWith({onUnlocked});
   });
 
-  it('unlocks with Plus', () => {
+  it('stays unlocked regardless of Plus state', () => {
     runInAction(() => {
       mockPurchaseStore.plusUnlocked = true;
     });
@@ -110,7 +111,7 @@ describe('VoiceModeStore', () => {
     runInAction(() => {
       mockPurchaseStore.plusUnlocked = false;
     });
-    expect(voiceModeStore.isUnlocked).toBe(false);
+    expect(voiceModeStore.isUnlocked).toBe(true);
   });
 
   it('opens the Plus screen as its paywall', () => {

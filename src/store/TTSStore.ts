@@ -9,6 +9,7 @@ import type {
   SupertonicLanguage,
 } from '@pocketpalai/react-native-speech';
 
+import {setExecutionProviderPreference} from '../services/tts/executionProviders';
 import {
   ensureVoiceFile,
   getEngine,
@@ -21,6 +22,7 @@ import {
   KOKORO_MODEL_ESTIMATED_BYTES,
   KITTEN_MODEL_ESTIMATED_BYTES,
   PHONON_MODEL_ESTIMATED_BYTES,
+  PIPER_MODEL_ESTIMATED_BYTES,
   ttsRuntime,
 } from '../services/tts';
 import type {
@@ -159,6 +161,13 @@ export class TTSStore {
    */
   supertonicLanguage: SupertonicLanguage = DEFAULT_SUPERTONIC_LANGUAGE;
 
+  /**
+   * TTS ONNX execution-provider preference. Persisted so a user's
+   * performance/power choice survives restart. Missing values default to
+   // `null` (engine picks the platform default) on first load.
+   */
+  ttsExecutionProviders: Array<'cpu' | 'xnnpack' | 'nnapi'> | null = null;
+
   // UI state
   isSetupSheetOpen: boolean = false;
   /** Free disk bytes, refreshed each time the setup sheet opens. */
@@ -180,6 +189,10 @@ export class TTSStore {
   phononDownloadState: NeuralDownloadState = 'not_installed';
   phononDownloadProgress: number = 0;
   phononDownloadError: string | null = null;
+
+  piperDownloadState: NeuralDownloadState = 'not_installed';
+  piperDownloadProgress: number = 0;
+  piperDownloadError: string | null = null;
 
   /** Whether the add-on's probe said Phonon runs here, this session. */
   phononSupported: boolean = false;
@@ -217,9 +230,18 @@ export class TTSStore {
         'supertonicSteps',
         'supertonicLanguage',
         'userTTSOverride',
+        'ttsExecutionProviders',
       ],
       storage: AsyncStorage,
     });
+    // Engines can't import this store (the registry closes the cycle), so the
+    // preference is mirrored into their module. `fireImmediately` also covers
+    // `makePersistable` hydration, which assigns the field directly.
+    reaction(
+      () => this.ttsExecutionProviders,
+      pref => setExecutionProviderPreference(pref),
+      {fireImmediately: true},
+    );
   }
 
   /**
@@ -449,6 +471,35 @@ export class TTSStore {
     this.currentVoice = v;
   }
 
+  /**
+   * Load the selected neural engine ahead of the first spoken word.
+   *
+   * Speech only starts once the engine is in native memory, and a neural
+   * load (57–380 MB of weights) is by far the longest part of the first
+   * utterance — much longer than the first LLM clause. Warming up when voice
+   * mode opens or auto-speak is switched on moves that cost off the critical
+   * path, so the first streamed clause is synthesized while the model is
+   * still decoding the rest of the reply. Idempotent: `acquire` keeps the
+   * already-loaded engine. Never throws.
+   */
+  async prewarm(): Promise<void> {
+    const voice = this.currentVoice;
+    if (!this.isTTSAvailable || voice == null || voice.engine === 'system') {
+      return;
+    }
+    try {
+      await ensureVoiceFile(voice);
+      const engine = getEngine(voice.engine);
+      await ttsRuntime.acquire(engine, async () => undefined);
+      vtrace('tts.prewarm', {engine: voice.engine});
+    } catch (err) {
+      console.warn('[TTSStore] prewarm failed:', err);
+      if (voice.engine === 'phonon') {
+        this.refreshAfterPhononFailure();
+      }
+    }
+  }
+
   setSupertonicSteps(steps: SupertonicSteps) {
     this.supertonicSteps = steps;
   }
@@ -459,6 +510,21 @@ export class TTSStore {
    */
   setSupertonicLanguage(language: SupertonicLanguage) {
     this.supertonicLanguage = language;
+  }
+
+  setTtsExecutionProviders(
+    providers: Array<'cpu' | 'xnnpack' | 'nnapi'> | null,
+  ) {
+    this.ttsExecutionProviders = providers;
+  }
+
+  /**
+   * Single-choice writer for the Voices-sheet compute-provider row.
+   * `null` clears the preference so each engine falls back to its
+   * platform default provider chain.
+   */
+  setTtsExecutionProvider(provider: 'cpu' | 'xnnpack' | 'nnapi' | null): void {
+    this.setTtsExecutionProviders(provider === null ? null : [provider]);
   }
 
   openSetupSheet() {
@@ -499,6 +565,9 @@ export class TTSStore {
       case 'phonon':
         this.phononDownloadState = state;
         break;
+      case 'piper':
+        this.piperDownloadState = state;
+        break;
       default: {
         const unhandled: never = id;
         throw new Error(`[TTSStore] unknown engine ${String(unhandled)}`);
@@ -519,6 +588,9 @@ export class TTSStore {
         break;
       case 'phonon':
         this.phononDownloadProgress = progress;
+        break;
+      case 'piper':
+        this.piperDownloadProgress = progress;
         break;
       default: {
         const unhandled: never = id;
@@ -541,6 +613,9 @@ export class TTSStore {
       case 'phonon':
         this.phononDownloadError = error;
         break;
+      case 'piper':
+        this.piperDownloadError = error;
+        break;
       default: {
         const unhandled: never = id;
         throw new Error(`[TTSStore] unknown engine ${String(unhandled)}`);
@@ -558,6 +633,8 @@ export class TTSStore {
         return this.kittenDownloadState;
       case 'phonon':
         return this.phononDownloadState;
+      case 'piper':
+        return this.piperDownloadState;
       default: {
         const unhandled: never = id;
         throw new Error(`[TTSStore] unknown engine ${String(unhandled)}`);
@@ -961,6 +1038,7 @@ export class TTSStore {
     kokoro: KOKORO_MODEL_ESTIMATED_BYTES,
     kitten: KITTEN_MODEL_ESTIMATED_BYTES,
     phonon: PHONON_MODEL_ESTIMATED_BYTES,
+    piper: PIPER_MODEL_ESTIMATED_BYTES,
   };
 
   private async downloadNeuralEngine(id: NeuralEngineId): Promise<void> {
@@ -1084,6 +1162,10 @@ export class TTSStore {
     return this.downloadNeuralEngine('phonon');
   }
 
+  async downloadPiper(): Promise<void> {
+    return this.downloadNeuralEngine('piper');
+  }
+
   /** Retry a failed Supertonic download (preserved for API compat). */
   async retryDownload(): Promise<void> {
     return this.downloadNeuralEngine('supertonic');
@@ -1101,6 +1183,10 @@ export class TTSStore {
     return this.downloadNeuralEngine('phonon');
   }
 
+  async retryPiperDownload(): Promise<void> {
+    return this.downloadNeuralEngine('piper');
+  }
+
   async deleteSupertonic(): Promise<void> {
     return this.deleteNeuralEngine('supertonic');
   }
@@ -1115,6 +1201,10 @@ export class TTSStore {
 
   async deletePhonon(): Promise<void> {
     return this.deleteNeuralEngine('phonon');
+  }
+
+  async deletePiper(): Promise<void> {
+    return this.deleteNeuralEngine('piper');
   }
 }
 

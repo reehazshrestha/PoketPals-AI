@@ -9,6 +9,7 @@
  * builder (`useTheme()`) so components remain locale-agnostic.
  */
 import {lightColors, darkColors} from './colors';
+import {accentOverrides, type AccentPaletteId} from './palettes';
 import {radius} from './radius';
 import {spacing} from './spacing';
 import {stroke} from './stroke';
@@ -33,11 +34,23 @@ export const darkTokens: Tokens = {
 };
 
 /**
- * Returns the resolved Tokens for a given mode. The returned object is a
- * stable per-module reference — do not mutate.
+ * Returns the resolved Tokens for a given mode and accent palette.
+ *
+ * With `graphite` (or no palette) this returns the shared base object
+ * unchanged, so callers that never touch palettes keep identical
+ * references. A real palette returns a new object with only the
+ * accent-bearing color keys overridden.
  */
-export function resolveTokens(mode: Mode): Tokens {
-  return mode === 'dark' ? darkTokens : lightTokens;
+export function resolveTokens(
+  mode: Mode,
+  palette: AccentPaletteId = 'graphite',
+): Tokens {
+  const base = mode === 'dark' ? darkTokens : lightTokens;
+  const overrides = accentOverrides(palette, mode);
+  if (Object.keys(overrides).length === 0) {
+    return base;
+  }
+  return {...base, colors: {...base.colors, ...overrides}};
 }
 
 export type {
@@ -60,6 +73,12 @@ export {
 } from './typography';
 
 export {lightColors, darkColors} from './colors';
+export {
+  ACCENT_PALETTES,
+  ACCENT_PALETTE_IDS,
+  accentOverrides,
+  type AccentPaletteId,
+} from './palettes';
 export {spacing} from './spacing';
 export {radius} from './radius';
 export {stroke} from './stroke';

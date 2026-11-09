@@ -13,6 +13,8 @@ export const createTagsStyles = (theme: Theme) => ({
   body: {
     color: theme.colors.text,
     fontSize: 16,
+    lineHeight: 23,
+    letterSpacing: 0.4,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     padding: 0,
@@ -20,6 +22,57 @@ export const createTagsStyles = (theme: Theme) => ({
     margin: 0,
     backgroundColor: 'transparent',
     // display: 'inline-block',
+  },
+  // Headings keep a wider track than body copy so they read as structure
+  // rather than louder body text. Sizes step down cleanly from h1 to h4;
+  // h5/h6 match body size and rely on weight for hierarchy.
+  h1: {
+    fontSize: 26,
+    lineHeight: 34,
+    letterSpacing: 1.0,
+    fontWeight: '700' as const,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  h2: {
+    fontSize: 22,
+    lineHeight: 30,
+    letterSpacing: 0.9,
+    fontWeight: '700' as const,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  h3: {
+    fontSize: 19,
+    lineHeight: 27,
+    letterSpacing: 0.8,
+    fontWeight: '600' as const,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  h4: {
+    fontSize: 17,
+    lineHeight: 25,
+    letterSpacing: 0.8,
+    fontWeight: '600' as const,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  h5: {
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.8,
+    fontWeight: '600' as const,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  h6: {
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: 0.8,
+    fontWeight: '600' as const,
+    marginTop: 8,
+    marginBottom: 4,
   },
   a: {
     color: theme.colors.secondary,
@@ -49,6 +102,7 @@ export const createTagsStyles = (theme: Theme) => ({
     color: theme.colors.thinkingBubbleText,
     fontSize: 14,
     lineHeight: 20,
+    letterSpacing: 0.3,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
@@ -56,6 +110,7 @@ export const createTagsStyles = (theme: Theme) => ({
     color: theme.colors.thinkingBubbleText,
     fontSize: 14,
     lineHeight: 20,
+    letterSpacing: 0.3,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
@@ -63,6 +118,7 @@ export const createTagsStyles = (theme: Theme) => ({
     color: theme.colors.thinkingBubbleText,
     fontSize: 14,
     lineHeight: 20,
+    letterSpacing: 0.3,
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },

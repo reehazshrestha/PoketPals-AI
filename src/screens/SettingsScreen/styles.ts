@@ -17,7 +17,11 @@ export const createStyles = (theme: Theme) =>
     },
     card: {
       marginVertical: 8,
-      borderRadius: 12,
+      // Grouped-inset feel: a bigger corner radius and a hairline edge instead
+      // of a shadow keeps the list calm on both light and dark surfaces.
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.outlineVariant,
       backgroundColor: theme.colors.background,
     },
     settingItemContainer: {

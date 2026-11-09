@@ -23,6 +23,7 @@ import type {
   Voice,
   VoiceFileSource,
 } from '../../types';
+import {executionProvidersFromPreference} from '../../executionProviders';
 import {KOKORO_VOICES} from './voices';
 
 export type KokoroProgressCallback = (progress: number) => void;
@@ -38,10 +39,20 @@ export type KokoroProgressCallback = (progress: number) => void;
  *      manifest is (re)written at the end to point at the full voice
  *      catalog.
  *
+ * Execution providers default to the platform default. A persisted user
+ * preference (`ttsExecutionProviders`) wins when set; when it is set to
+ * CPU-only on Android, NNAPI is omitted because the ORT RN bundle shipped
+ * here does not expose NNAPI beyond xnnpack/cpu.
+ *
  * CPU-only execution is forced (`executionProviders: ['cpu']`) across all
  * three neural engines for consistent battery/thermal behavior and easier
  * QA. The library default on iOS would otherwise include CoreML; we keep
  * it bare CPU for now.
+ *
+ * Note: the shipped ORT RN bundle does not expose NNAPI, so NNAPI is
+ * best-effort-mapped to xnnpack in `executionProvidersFromPreference`.
+ * This is intentionally coarse and only affects the on-device TTS init
+ * path; it does NOT affect streaming or fallback behavior.
  */
 export class KokoroEngine implements NeuralEngine {
   readonly id = 'kokoro' as const;
@@ -228,7 +239,7 @@ export class KokoroEngine implements NeuralEngine {
       tokenizerPath: `file://${modelDir}/tokenizer.json`,
       voicesPath: `file://${modelDir}/${KOKORO_VOICES_MANIFEST_FILENAME}`,
       dictPath: `file://${modelDir}/${TTS_DICT_FILENAME}`,
-      executionProviders: ['cpu'],
+      executionProviders: executionProvidersFromPreference(),
       maxChunkSize: 200,
       silentMode: 'obey',
       ducking: true,

@@ -79,12 +79,20 @@ export interface AgentUiState {
     | 'failed';
   pendingTalentNames: string[];
   hitMaxTurns: boolean;
+  /**
+   * Name of the tool currently executing, if any. Set on
+   * `tool_call_started` so the pending indicator can label long-running
+   * searches ("Searching the web…") without inspecting message state.
+   * Optional so older persisted/reduced states stay valid.
+   */
+  activeToolName?: string | null;
 }
 
 export const initialAgentUiState: AgentUiState = {
   status: 'idle',
   pendingTalentNames: [],
   hitMaxTurns: false,
+  activeToolName: null,
 };
 
 /**

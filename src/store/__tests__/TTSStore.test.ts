@@ -63,6 +63,12 @@ const mockPhononGetVoices = jest.fn().mockResolvedValue([
   {id: 'Zoey', name: 'Zoey', engine: 'phonon', language: 'en-us'},
   {id: 'Alfie', name: 'Alfie', engine: 'phonon', language: 'en-gb'},
 ]);
+const mockPiperIsInstalled = jest.fn().mockResolvedValue(false);
+const mockPiperDownloadModel = jest.fn().mockResolvedValue(undefined);
+const mockPiperDeleteModel = jest.fn().mockResolvedValue(undefined);
+const mockPiperPlay = jest.fn().mockResolvedValue(undefined);
+const mockPiperStop = jest.fn().mockResolvedValue(undefined);
+const mockPiperGetVoices = jest.fn().mockResolvedValue([]);
 // Per-streaming-session handle factories — we build a fresh spy-backed
 // handle for each `playStreaming()` call and expose the most recent one
 // on `lastSystemHandle` / `lastSupertonicHandle` so tests can assert.
@@ -101,7 +107,7 @@ const mockSupertonicPlayStreaming = jest.fn(() => {
 jest.mock('../../services/tts', () => {
   const actual = jest.requireActual('../../services/tts');
   const getEngine = (
-    id: 'system' | 'supertonic' | 'kokoro' | 'kitten' | 'phonon',
+    id: 'system' | 'supertonic' | 'kokoro' | 'kitten' | 'phonon' | 'piper',
   ) => {
     if (id === 'system') {
       return {
@@ -141,6 +147,22 @@ jest.mock('../../services/tts', () => {
         downloadModel: mockPhononDownloadModel,
         deleteModel: mockPhononDeleteModel,
         reclaimLegacySpace: mockPhononReclaimLegacySpace,
+      };
+    }
+    if (id === 'piper') {
+      return {
+        id: 'piper',
+        isInstalled: mockPiperIsInstalled,
+        getVoices: mockPiperGetVoices,
+        play: mockPiperPlay,
+        playStreaming: jest.fn(() => ({
+          appendText: jest.fn(),
+          finalize: jest.fn().mockResolvedValue(undefined),
+          cancel: jest.fn().mockResolvedValue(undefined),
+        })),
+        stop: mockPiperStop,
+        downloadModel: mockPiperDownloadModel,
+        deleteModel: mockPiperDeleteModel,
       };
     }
     if (id === 'kitten') {

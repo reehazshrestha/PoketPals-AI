@@ -623,6 +623,12 @@ export interface Model {
   hfModelFile?: ModelFile;
   hfModel?: HuggingFaceModel;
   hash?: string;
+  /**
+   * Lowercase hex SHA-256 the downloaded file must match. Set only for
+   * models whose upstream checksum is pinned in code; absent means no
+   * post-download hash gate (a full-file hash is expensive).
+   */
+  expectedSha256?: string;
 
   // Provenance marker: set on models materialized from the device-rule preset
   // list. Lets reconcile prune stale, non-downloaded rule stubs without touching

@@ -18,6 +18,7 @@ export const TTS_ENGINE_RUNTIME_BYTES: Record<NeuralEngineId, number> = {
   kokoro: 500_000_000,
   kitten: 200_000_000,
   phonon: 200 * 1024 * 1024,
+  piper: 300 * 1024 * 1024,
 };
 
 /** Subdirectory (relative to app documents dir) used for Supertonic model files. */
@@ -31,6 +32,36 @@ export const KITTEN_MODEL_SUBDIR = 'tts/kitten';
 
 /** Parent `tts/` directory (iOS backup exclusion applied here during mkdir). */
 export const TTS_PARENT_SUBDIR = 'tts';
+
+// ---------------------------------------------------------------------------
+// Piper (en_US lessac medium — verified rhasspy/piper-voices release)
+// ---------------------------------------------------------------------------
+
+export const PIPER_MODEL_SUBDIR = 'tts/piper';
+
+export const PIPER_HF_BASE_URL =
+  'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium';
+
+export const PIPER_VOICE_ID = 'en_US-lessac-medium';
+
+export const PIPER_MODEL_FILENAME = 'en_US-lessac-medium.onnx';
+export const PIPER_CONFIG_FILENAME = 'en_US-lessac-medium.onnx.json';
+
+/**
+ * Verified on Hugging Face (2026-11-08): the ONNX voice is 63,201,294 bytes
+ * with sha256 5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f;
+ * the config is 4,885 bytes. The shared IPA dictionary adds a small download.
+ */
+export const PIPER_MODEL_FILES = [
+  {name: PIPER_MODEL_FILENAME, urlPath: PIPER_MODEL_FILENAME},
+  {name: PIPER_CONFIG_FILENAME, urlPath: PIPER_CONFIG_FILENAME},
+] as const;
+
+export const PIPER_MODEL_ONNX_SHA256 =
+  '5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f';
+export const PIPER_MODEL_ONNX_BYTES = 63_201_294;
+
+export const PIPER_MODEL_ESTIMATED_BYTES = 66 * 1024 * 1024;
 
 /**
  * HuggingFace base URL for the Supertonic v3 (31-language) model.

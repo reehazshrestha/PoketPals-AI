@@ -27,11 +27,12 @@ describe('SearchProviderStore', () => {
   };
 
   describe('initial state', () => {
-    it('defaults to brave, result count 5, no consent', async () => {
+    it('defaults to the keyless You.com provider, result count 5, search on', async () => {
       const store = await newStore();
-      expect(store.activeProviderId).toBe('brave');
+      expect(store.activeProviderId).toBe('you');
       expect(store.resultCount).toBe(5);
-      expect(store.hasConsentedToSearch).toBe(false);
+      // Free web search works on a fresh install; the Settings switch revokes.
+      expect(store.hasConsentedToSearch).toBe(true);
     });
 
     it('lists Parallel as gated (not selectable)', () => {
@@ -116,7 +117,7 @@ describe('SearchProviderStore', () => {
   describe('preferences', () => {
     it('sets the active provider only for selectable providers', async () => {
       const store = await newStore();
-      // Switch away from the brave default so the write is observable.
+      // Switch away from the default so the write is observable.
       store.setActiveProvider('tavily');
       expect(store.activeProviderId).toBe('tavily');
 
@@ -146,7 +147,7 @@ describe('SearchProviderStore', () => {
       const store = await newStore();
       store.activeProviderId = 'parallel'; // gated; only reachable via stale storage
       store.normalizeHydratedPrefs();
-      expect(store.activeProviderId).toBe('brave');
+      expect(store.activeProviderId).toBe('you');
     });
 
     it('clamps a persisted out-of-range result count', async () => {
@@ -192,22 +193,27 @@ describe('SearchProviderStore', () => {
   describe('isProviderConfigured', () => {
     it('is false with no key and true once the active provider has a key', async () => {
       const store = await newStore();
+      store.setActiveProvider('brave'); // default is keyless, so pick a keyed one
       expect(store.isProviderConfigured).toBe(false);
       await store.setKey('brave', 'k'); // the active provider
       expect(store.isProviderConfigured).toBe(true);
     });
 
-    it('counts a keyless provider (You.com) as configured without a key', async () => {
-      const store = await newStore();
-      store.setActiveProvider('you');
-      expect(store.hasKey('you')).toBe(false);
-      expect(store.isKeyOptional('you')).toBe(true);
-      expect(store.isProviderConfigured).toBe(true);
-    });
+    it.each(['you', 'duckduckgo'] as const)(
+      'counts the keyless provider %s as configured without a key',
+      async id => {
+        const store = await newStore();
+        store.setActiveProvider(id);
+        expect(store.hasKey(id)).toBe(false);
+        expect(store.isKeyOptional(id)).toBe(true);
+        expect(store.isProviderConfigured).toBe(true);
+      },
+    );
 
     it('keeps keyed providers requiring a key', () => {
+      const keyless = new Set(['you', 'duckduckgo']);
       for (const {id, requiresKey} of SEARCH_PROVIDERS) {
-        if (id !== 'you') {
+        if (!keyless.has(id)) {
           expect(requiresKey).not.toBe(false);
         }
       }
@@ -217,24 +223,26 @@ describe('SearchProviderStore', () => {
   describe('canSearch (consent + configured provider, load-bearing at execution)', () => {
     it('requires both consent and a key', async () => {
       const store = await newStore();
+      store.setActiveProvider('brave'); // keyed
       expect(store.canSearch).toBe(false);
 
+      // A key alone is not enough: revoking consent still closes search.
       await store.setKey('brave', 'k'); // the active provider
-      expect(store.canSearch).toBe(false);
-
-      store.setConsent(true);
       expect(store.canSearch).toBe(true);
 
       store.setConsent(false);
       expect(store.canSearch).toBe(false);
-    });
 
-    it('still requires consent for a keyless provider', async () => {
-      const store = await newStore();
-      store.setActiveProvider('you');
-      expect(store.canSearch).toBe(false);
       store.setConsent(true);
       expect(store.canSearch).toBe(true);
+    });
+
+    it('lets the consent switch close a keyless provider', async () => {
+      const store = await newStore();
+      store.setActiveProvider('you');
+      expect(store.canSearch).toBe(true);
+      store.setConsent(false);
+      expect(store.canSearch).toBe(false);
     });
   });
 

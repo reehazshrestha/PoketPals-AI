@@ -22,11 +22,17 @@ const MIN_TOKENS = 10;
 // generic "Preparing tool".
 const TALENT_LABEL_KEYS: Record<
   string,
-  'buildingPage' | 'calculating' | 'lookingUpTime'
+  | 'buildingPage'
+  | 'calculating'
+  | 'lookingUpTime'
+  | 'searchingWeb'
+  | 'readingPage'
 > = {
   render_html: 'buildingPage',
   calculate: 'calculating',
   datetime: 'lookingUpTime',
+  web_search: 'searchingWeb',
+  read_url: 'readingPage',
 };
 
 interface DotProps {
@@ -36,23 +42,44 @@ interface DotProps {
 
 const Dot: React.FC<DotProps> = ({delay, theme}) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const animation = Animated.sequence([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 500,
-        delay,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0.3,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]);
-    Animated.loop(animation).start();
-  }, [opacity, delay]);
+    // Soft bounce + fade, staggered per dot. Transform and opacity only,
+    // so this stays on the native animation driver while tokens stream.
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: -3,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0.3,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.delay(500),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacity, translateY, delay]);
 
   return (
     <Animated.View
@@ -61,6 +88,7 @@ const Dot: React.FC<DotProps> = ({delay, theme}) => {
         {
           backgroundColor: theme.colors.onSurfaceVariant,
           opacity,
+          transform: [{translateY}],
         },
       ]}
     />
@@ -74,6 +102,12 @@ interface PendingIndicatorProps {
    * Empty / undefined → no label, plain dot-row.
    */
   pendingTalentNames?: string[];
+  /**
+   * Name of the tool currently executing. Continues the same label after
+   * `pendingTalentNames` clears, so `web_search` reads "Searching the web"
+   * for the whole request, not only while the call is being generated.
+   */
+  activeToolName?: string | null;
   /**
    * Number of token events received during the current tool-call
    * generation. Surfaced once it crosses {@link MIN_TOKENS}.
@@ -95,6 +129,7 @@ interface PendingIndicatorProps {
  */
 export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
   pendingTalentNames,
+  activeToolName,
   toolCallTokenCount = 0,
   isStopping = false,
 }) => {
@@ -102,8 +137,10 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
   const l10n = useContext(L10nContext);
   const countStyle = createCountStyle(theme).count;
 
-  const firstTalent = pendingTalentNames?.[0];
-  const inToolCallMode = !!firstTalent;
+  const generatingTalent = pendingTalentNames?.[0];
+  const talentName = generatingTalent ?? activeToolName ?? undefined;
+  const isExecuting = !generatingTalent && !!activeToolName;
+  const inToolCallMode = !!talentName;
 
   // Elapsed seconds tracker. Starts when we enter tool-call mode,
   // resets when we leave. Uses a 1-second interval — coarse enough
@@ -131,12 +168,12 @@ export const PendingIndicator: React.FC<PendingIndicatorProps> = ({
   if (isStopping) {
     suffix = l10n.components.pendingIndicator.stopping;
   } else if (inToolCallMode) {
-    const labelKey = firstTalent ? TALENT_LABEL_KEYS[firstTalent] : undefined;
+    const labelKey = talentName ? TALENT_LABEL_KEYS[talentName] : undefined;
     const label = labelKey
       ? l10n.components.pendingIndicator[labelKey]
       : l10n.components.pendingIndicator.preparingTool;
     const parts: string[] = [label];
-    if (toolCallTokenCount >= MIN_TOKENS) {
+    if (!isExecuting && toolCallTokenCount >= MIN_TOKENS) {
       parts.push(
         t(l10n.components.toolMetrics.tokens, {
           count: toolCallTokenCount.toLocaleString(),
