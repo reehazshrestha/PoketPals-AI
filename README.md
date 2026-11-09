@@ -142,6 +142,14 @@ PoketPals AI is local-first:
 
 The app still contains upstream networking for model downloads, optional benchmarking, and optional feedback. Those paths never attach your chat contents.
 
+## Legal
+
+- [Privacy policy](docs/legal/privacy-policy.md)
+- [Terms of service](docs/legal/terms-of-service.md)
+- [Open-source notices](docs/legal/open-source-notices.md)
+
+The same documents are bundled in the app under **App Info** and work offline.
+
 ## Project status
 
 PoketPals AI is an independent community fork, not an official PocketPal release. It is developed Android-first. The iOS project is kept in the repository for upstream compatibility, but iOS builds are not currently produced or tested by this fork.
@@ -152,7 +160,7 @@ Expect rough edges. Bug reports and pull requests are welcome at [reehazshrestha
 
 PoketPals AI would not exist without the work of the PocketPal community:
 
-- **[PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)** by Ali Ghorbani — the upstream project this fork is based on. If you want the original app, store builds, Pals, and PalsHub, use upstream.
+- **[PocketPal AI](https://github.com/a-ghorbani/pocketpal-ai)** by Asghar Ghorbani — the upstream project this fork is based on. If you want the original app, store builds, Pals, and PalsHub, use upstream.
 - **[llama.cpp](https://github.com/ggml-org/llama.cpp)** and **[llama.rn](https://github.com/mybigday/llama.rn)** — on-device language model inference.
 - **[whisper.cpp](https://github.com/ggml-org/whisper.cpp)** and **[whisper.rn](https://github.com/mybigday/whisper.rn)** — speech recognition.
 - **[ONNX Runtime](https://onnxruntime.ai/)** — neural text-to-speech inference.
