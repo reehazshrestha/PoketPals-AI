@@ -11,7 +11,7 @@ import AppIntents
 @available(iOS 16.0, *)
 struct OpenPalChatIntent: AppIntent {
     static var title: LocalizedStringResource = "Open Pal Chat"
-    static var description = IntentDescription("Open PocketPal and start chatting with a specific Pal")
+    static var description = IntentDescription("Open PoketPals AI and start chatting with a specific Pal")
     
     static var openAppWhenRun: Bool = true // Open the app
     

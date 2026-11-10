@@ -67,10 +67,10 @@ describe('SidebarContent Plus entry', () => {
     const {getAllByText} = render(<TestNavigator />);
 
     expect(
-      getAllByText(/^(Settings|PocketPal Plus|App Info)$/).map(
+      getAllByText(/^(Settings|PoketPals Plus|App Info)$/).map(
         node => node.props.children,
       ),
-    ).toEqual(['Settings', 'PocketPal Plus', 'App Info']);
+    ).toEqual(['Settings', 'PoketPals Plus', 'App Info']);
   });
 
   it('has no Plus entry in an ungated build, even with a feature shipped', () => {
@@ -80,7 +80,7 @@ describe('SidebarContent Plus entry', () => {
 
     expect(queryByTestId('drawer-item-plus')).toBeNull();
     expect(
-      getAllByText(/^(Settings|PocketPal Plus|App Info)$/).map(
+      getAllByText(/^(Settings|PoketPals Plus|App Info)$/).map(
         node => node.props.children,
       ),
     ).toEqual(['Settings', 'App Info']);

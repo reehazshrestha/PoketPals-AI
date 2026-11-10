@@ -150,7 +150,7 @@
     "importError": "Failed to import chat sessions. Please check the file format.",
     "internetSearch": {
       "title": "Internet Search",
-      "description": "Let Pals search the web with their own tools. Bring your own API key — PocketPal never holds your keys or routes your queries.",
+      "description": "Let Pals search the web with their own tools. Bring your own API key — PoketPals AI never holds your keys or routes your queries.",
       "providerLabel": "Search provider",
       "providerGated": "Coming soon",
       "keyLabel": "API key",
@@ -168,7 +168,7 @@
       "resultCountLabel": "Results per search",
       "resultCountDescription": "Fewer results keep more room in the model's context.",
       "consentTitle": "Searches leave your device",
-      "consentDescription": "When a Pal searches the web, your query is sent to the selected provider over the internet. When a Pal reads a page, the URL and page content may instead be sent to a default reader service (r.jina.ai) if the selected provider has no native reader. Keys and queries are never sent to PocketPal.",
+      "consentDescription": "When a Pal searches the web, your query is sent to the selected provider over the internet. When a Pal reads a page, the URL and page content may instead be sent to a default reader service (r.jina.ai) if the selected provider has no native reader. Keys and queries are never sent to PoketPals AI.",
       "consentAccept": "I understand",
       "consentRequired": "Accept the disclosure above to set a key and enable search.",
       "consentGivenTitle": "Searching the web is enabled",
@@ -598,7 +598,7 @@
       "placeholder": "Share any other thoughts you may have."
     },
     "usageFrequency": {
-      "label": "How often do you use PocketPal AI? (Optional)",
+      "label": "How often do you use PoketPals AI? (Optional)",
       "options": {
         "daily": "Daily",
         "weekly": "Weekly",
@@ -724,7 +724,7 @@
     },
     "modelErrorReportSheet": {
       "title": "Report Model Loading Issue",
-      "privacyNote": "Help us improve PocketPal by sharing details about this error. Review below what will be shared - you can deselect any items you prefer not to include.",
+      "privacyNote": "Help us improve PoketPals AI by sharing details about this error. Review below what will be shared - you can deselect any items you prefer not to include.",
       "errorMessage": "Error message",
       "modelInfo": "Model Information",
       "modelName": "Name",
@@ -742,7 +742,7 @@
       "submit": "Submit Report",
       "success": {
         "title": "Report Submitted",
-        "message": "Thank you for helping us improve PocketPal. Your report will help us fix this issue."
+        "message": "Thank you for helping us improve PoketPals AI. Your report will help us fix this issue."
       },
       "error": {
         "title": "Report Failed",
@@ -1238,7 +1238,7 @@
   },
   "camera": {
     "permissionTitle": "Camera Permission Required",
-    "permissionMessage": "PocketPal needs camera access to analyze images",
+    "permissionMessage": "PoketPals AI needs camera access to analyze images",
     "requestingPermission": "Requesting camera permission...",
     "noDevice": "No camera device found",
     "errorTitle": "Camera Error",
@@ -1252,7 +1252,7 @@
   },
   "video": {
     "permissionTitle": "Camera Permission Required",
-    "permissionMessage": "PocketPal needs camera access for video analysis",
+    "permissionMessage": "PoketPals AI needs camera access for video analysis",
     "requestingPermission": "Requesting camera permission...",
     "noDevice": "No camera device found",
     "errorTitle": "Camera Error",
@@ -1703,7 +1703,7 @@
     "continueAnywayCta": "Continue anyway",
     "chooseSmallerModelCta": "Choose a smaller model",
     "startLabel": "Start voice mode",
-    "startLockedLabel": "Hands-free voice, PocketPal Plus",
+    "startLockedLabel": "Hands-free voice, PoketPals Plus",
     "startLockedHint": "Opens a short preview. Typing and dictation stay free.",
     "teaserTitle": "Voice conversation is a Plus feature",
     "teaserBody": "Talk hands-free. It answers aloud.",
@@ -1809,11 +1809,11 @@
     "retry": "Retry"
   },
   "plus": {
-    "eyebrow": "PocketPal Plus",
+    "eyebrow": "PoketPals Plus",
     "headline": "Push local AI further.",
-    "subline": "Plus keeps PocketPal free and open source. The extra features are our thanks.",
-    "unsupportedSubline": "Plus features don't run on this phone yet. You can still support PocketPal.",
-    "thanksHeadline": "Thank you for keeping PocketPal going.",
+    "subline": "Plus keeps PoketPals AI free and open source. The extra features are our thanks.",
+    "unsupportedSubline": "Plus features don't run on this phone yet. You can still support PoketPals AI.",
+    "thanksHeadline": "Thank you for keeping PoketPals AI going.",
     "thanksSubline": "Plus is unlocked on this device.",
     "features": {
       "handsFreeVoice": "Hands-free voice",
@@ -1849,7 +1849,7 @@
     "noPurchaseFound": "No Plus purchase found.",
     "restoreFailed": "Couldn't reach the store. Try again.",
     "sidebar": {
-      "title": "PocketPal Plus",
+      "title": "PoketPals Plus",
       "unlocked": "Unlocked",
       "subtitleOne": "{{first}}",
       "subtitleTwo": "{{first}}, {{second}}",

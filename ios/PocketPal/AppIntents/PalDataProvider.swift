@@ -316,9 +316,9 @@ enum PalDataError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .databaseNotFound:
-            return "PocketPal database not found"
+            return "PoketPals AI database not found"
         case .databaseOpenFailed:
-            return "Failed to open PocketPal database"
+            return "Failed to open PoketPals AI database"
         case .queryFailed:
             return "Failed to query pals from database"
         }

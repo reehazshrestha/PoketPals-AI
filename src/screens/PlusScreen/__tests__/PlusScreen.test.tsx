@@ -140,7 +140,7 @@ describe('PlusScreen', () => {
       expect(getByText('Push local AI further.')).toBeTruthy();
       expect(
         getByText(
-          'Plus keeps PocketPal free and open source. The extra features are our thanks.',
+          'Plus keeps PoketPals AI free and open source. The extra features are our thanks.',
         ),
       ).toBeTruthy();
       expect(getByTestId('plus-feature-handsFreeVoice')).toHaveTextContent(
@@ -355,7 +355,7 @@ describe('PlusScreen', () => {
     const {getByTestId, getByText, queryByTestId, onClose, UNSAFE_root} =
       renderScreen();
 
-    expect(getByText('Thank you for keeping PocketPal going.')).toBeTruthy();
+    expect(getByText('Thank you for keeping PoketPals AI going.')).toBeTruthy();
     expect(getByText('Plus is unlocked on this device.')).toBeTruthy();
     const hearts = UNSAFE_root.findAll(
       node => (node.type as string) === 'HeartIcon',
@@ -511,7 +511,7 @@ describe('PlusScreen', () => {
       );
       expect(
         getByText(
-          "Plus features don't run on this phone yet. You can still support PocketPal.",
+          "Plus features don't run on this phone yet. You can still support PoketPals AI.",
         ),
       ).toBeTruthy();
     });
